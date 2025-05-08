@@ -10,9 +10,24 @@ fi
 # Ensure we're authenticated
 gh auth status || { echo "Please login using 'gh auth login'"; exit 1; }
 
+# Get repo info
+REPO_URL=$(git config --get remote.origin.url)
+REPO_INFO=$(echo $REPO_URL | sed -n 's/.*github.com[\/:]\\([^\\/]*\\)\/\\([^\\/]*\\)\\.git/\\1 \\2/p')
+OWNER=$(echo $REPO_INFO | cut -d' ' -f1)
+REPO=$(echo $REPO_INFO | cut -d' ' -f2)
+
+# If we couldn't extract owner/repo, try another method
+if [ -z "$OWNER" ] || [ -z "$REPO" ]; then
+  REPO_INFO=$(gh repo view --json owner,name -q '.owner.login + " " + .name')
+  OWNER=$(echo $REPO_INFO | cut -d' ' -f1)
+  REPO=$(echo $REPO_INFO | cut -d' ' -f2)
+fi
+
+echo "Repository: $OWNER/$REPO"
+
 # Create Phase 1 milestone
 echo "Creating Phase 1 milestone..."
-MILESTONE_RESPONSE=$(gh api repos/:owner/:repo/milestones -f title="Phase 1: Core Object Support" \
+MILESTONE_RESPONSE=$(gh api "repos/$OWNER/$REPO/milestones" -f title="Phase 1: Core Object Support" \
   -f description="Expand the MCP server to support People objects and Lists management, and improve the codebase structure." \
   -f state="open" \
   --jq '.number')
@@ -39,8 +54,7 @@ gh issue create --title "Modularize the codebase" \
 - Create separate modules for each object type
 - Update imports and references" \
   --label "enhancement" \
-  --milestone "$MILESTONE_NUMBER" \
-  --assignee "@me"
+  --milestone "$MILESTONE_NUMBER"
 
 # Issue 2: Implement People object support
 gh issue create --title "Implement People object support" \
@@ -55,8 +69,7 @@ gh issue create --title "Implement People object support" \
 - Add create-person-note tool
 - Test all new functionality" \
   --label "enhancement" \
-  --milestone "$MILESTONE_NUMBER" \
-  --assignee "@me"
+  --milestone "$MILESTONE_NUMBER"
 
 # Issue 3: Implement Lists management
 gh issue create --title "Implement Lists management" \
@@ -69,8 +82,7 @@ gh issue create --title "Implement Lists management" \
 - Add remove-record-from-list tool to remove a record from a list
 - Test all new functionality" \
   --label "enhancement" \
-  --milestone "$MILESTONE_NUMBER" \
-  --assignee "@me"
+  --milestone "$MILESTONE_NUMBER"
 
 # Issue 4: Enhance error handling
 gh issue create --title "Enhance error handling and response formatting" \
@@ -83,8 +95,7 @@ gh issue create --title "Enhance error handling and response formatting" \
 - Handle rate limiting and network errors
 - Test error scenarios" \
   --label "enhancement" \
-  --milestone "$MILESTONE_NUMBER" \
-  --assignee "@me"
+  --milestone "$MILESTONE_NUMBER"
 
 # Issue 5: Documentation
 gh issue create --title "Update documentation for Phase 1 changes" \
@@ -96,7 +107,6 @@ gh issue create --title "Update documentation for Phase 1 changes" \
 - Add examples for new tools
 - Update installation and usage instructions" \
   --label "documentation" \
-  --milestone "$MILESTONE_NUMBER" \
-  --assignee "@me"
+  --milestone "$MILESTONE_NUMBER"
 
 echo "GitHub issues and milestone created successfully!"
