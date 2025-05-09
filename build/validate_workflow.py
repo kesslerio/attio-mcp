@@ -135,7 +135,7 @@ def validate_commit_message(commit_msg: str) -> bool:
         print_error(f"Current first line: '{first_line}'")
         return False
     else:
-        print_success(f"Commit message has valid prefix")
+        print_success("Commit message has valid prefix")
     
     # Check for issue reference
     issue_ref = re.search(r"(#\d+)", commit_msg)
@@ -231,22 +231,38 @@ def main() -> int:
         branch_valid = validate_branch_name()
         
         # Validate commit message
-        # Try multiple possible locations for the commit message file
-        possible_commit_msg_files = [
-            os.environ.get("GIT_COMMIT_MSG_FILE"),  # From environment variable
-            ".git/COMMIT_EDITMSG",                  # Standard Git location
-            os.path.join(os.getcwd(), ".git/COMMIT_EDITMSG")  # Absolute path
-        ]
+        # Check for Husky environment variables first (from Husky v4 or v5+)
+        husky_params = os.environ.get("HUSKY_GIT_PARAMS") or os.environ.get("GIT_PARAMS")
         
-        commit_msg = None
-        for file_path in possible_commit_msg_files:
-            if file_path and os.path.exists(file_path):
-                try:
-                    with open(file_path, "r") as f:
-                        commit_msg = f.read().strip()
-                    break
-                except Exception as e:
-                    print_warning(f"Error reading {file_path}: {e}")
+        if husky_params:
+            print_info(f"Using Husky params: {husky_params}")
+            # In Husky, this is typically the path to the commit message file
+            try:
+                with open(husky_params, "r") as f:
+                    commit_msg = f.read().strip()
+                print_info("Successfully read commit message from Husky params")
+            except Exception as e:
+                print_warning(f"Error reading Husky commit message file: {e}")
+                commit_msg = None
+        else:
+            # Try multiple possible locations for the commit message file
+            possible_commit_msg_files = [
+                os.environ.get("GIT_COMMIT_MSG_FILE"),  # From environment variable
+                ".git/COMMIT_EDITMSG",                  # Standard Git location
+                os.path.join(os.getcwd(), ".git/COMMIT_EDITMSG"),  # Absolute path
+                ".git/MERGE_MSG"                        # For merge commits
+            ]
+            
+            commit_msg = None
+            for file_path in possible_commit_msg_files:
+                if file_path and os.path.exists(file_path):
+                    try:
+                        with open(file_path, "r") as f:
+                            commit_msg = f.read().strip()
+                        print_info(f"Successfully read commit message from {file_path}")
+                        break
+                    except Exception as e:
+                        print_warning(f"Error reading {file_path}: {e}")
         
         if not commit_msg:
             # If we can't find the commit message file, try to get it from the command line
