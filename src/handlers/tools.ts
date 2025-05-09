@@ -15,6 +15,259 @@ import {
   createPersonNote 
 } from "../objects/people.js";
 import { createErrorResult } from "../utils/error-handler.js";
+import { parseResourceUri } from "../utils/uri-parser.js";
+import { ResourceType } from "../types/attio.js";
+
+// Type definitions for tool configs
+interface ToolConfig {
+  name: string;
+  description: string;
+  handler: (...args: any[]) => Promise<any>;
+  [key: string]: any;
+}
+
+interface SearchToolConfig extends ToolConfig {
+  formatResult: (results: any[]) => string;
+}
+
+interface DetailsToolConfig extends ToolConfig {
+  uriPrefix: string;
+}
+
+interface NotesToolConfig extends ToolConfig {
+  uriPrefix: string;
+}
+
+interface CreateNoteToolConfig extends ToolConfig {
+  idParam: string;
+}
+
+interface ResourceToolConfigs {
+  search: SearchToolConfig;
+  details: DetailsToolConfig;
+  notes: NotesToolConfig;
+  createNote: CreateNoteToolConfig;
+}
+
+/**
+ * Tool configuration for each resource type
+ */
+const TOOL_CONFIGS: Record<ResourceType, ResourceToolConfigs> = {
+  [ResourceType.COMPANIES]: {
+    search: {
+      name: "search-companies",
+      description: "Search for companies by name",
+      handler: searchCompanies,
+      formatResult: (results: any[]) => results.map((company) => {
+        const companyName = company.values?.name?.[0]?.value || "Unknown Company";
+        const companyId = company.id?.record_id || "Record ID not found";
+        return `${companyName}: attio://companies/${companyId}`;
+      }).join("\n")
+    },
+    details: {
+      name: "read-company-details",
+      description: "Read details of a company",
+      handler: getCompanyDetails,
+      uriPrefix: "attio://companies/"
+    },
+    notes: {
+      name: "read-company-notes",
+      description: "Read notes for a company",
+      handler: getCompanyNotes,
+      uriPrefix: "attio://companies/"
+    },
+    createNote: {
+      name: "create-company-note",
+      description: "Add a new note to a company",
+      handler: createCompanyNote,
+      idParam: "companyId"
+    }
+  },
+  [ResourceType.PEOPLE]: {
+    search: {
+      name: "search-people",
+      description: "Search for people by name",
+      handler: searchPeople,
+      formatResult: (results: any[]) => results.map((person) => {
+        const personName = person.values?.name?.[0]?.value || "Unknown Person";
+        const personId = person.id?.record_id || "Record ID not found";
+        return `${personName}: attio://people/${personId}`;
+      }).join("\n")
+    },
+    details: {
+      name: "read-person-details",
+      description: "Read details of a person",
+      handler: getPersonDetails,
+      uriPrefix: "attio://people/"
+    },
+    notes: {
+      name: "read-person-notes",
+      description: "Read notes for a person",
+      handler: getPersonNotes,
+      uriPrefix: "attio://people/"
+    },
+    createNote: {
+      name: "create-person-note",
+      description: "Add a new note to a person",
+      handler: createPersonNote,
+      idParam: "personId"
+    }
+  }
+};
+
+/**
+ * Tool definitions for each resource type
+ */
+const TOOL_DEFINITIONS = {
+  [ResourceType.COMPANIES]: [
+    {
+      name: "search-companies",
+      description: "Search for companies by name",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Company name or keyword to search for",
+          },
+        },
+        required: ["query"],
+      },
+    },
+    {
+      name: "read-company-details",
+      description: "Read details of a company",
+      inputSchema: {
+        type: "object",
+        properties: {
+          uri: {
+            type: "string",
+            description: "URI of the company to read",
+          },
+        },
+        required: ["uri"],
+      },
+    },
+    {
+      name: "read-company-notes",
+      description: "Read notes for a company",
+      inputSchema: {
+        type: "object",
+        properties: {
+          uri: {
+            type: "string",
+            description: "URI of the company to read notes for",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of notes to fetch (optional, default 10)",
+          },
+          offset: {
+            type: "number",
+            description: "Number of notes to skip (optional, default 0)",
+          },
+        },
+        required: ["uri"],
+      },
+    },
+    {
+      name: "create-company-note",
+      description: "Add a new note to a company",
+      inputSchema: {
+        type: "object",
+        properties: {
+          companyId: {
+            type: "string",
+            description: "ID of the company to add the note to",
+          },
+          noteTitle: {
+            type: "string",
+            description: "Title of the note",
+          },
+          noteText: {
+            type: "string",
+            description: "Text content of the note",
+          },
+        },
+        required: ["companyId", "noteTitle", "noteText"],
+      },
+    }
+  ],
+  [ResourceType.PEOPLE]: [
+    {
+      name: "search-people",
+      description: "Search for people by name",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Person name or keyword to search for",
+          },
+        },
+        required: ["query"],
+      },
+    },
+    {
+      name: "read-person-details",
+      description: "Read details of a person",
+      inputSchema: {
+        type: "object",
+        properties: {
+          uri: {
+            type: "string",
+            description: "URI of the person to read",
+          },
+        },
+        required: ["uri"],
+      },
+    },
+    {
+      name: "read-person-notes",
+      description: "Read notes for a person",
+      inputSchema: {
+        type: "object",
+        properties: {
+          uri: {
+            type: "string",
+            description: "URI of the person to read notes for",
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of notes to fetch (optional, default 10)",
+          },
+          offset: {
+            type: "number",
+            description: "Number of notes to skip (optional, default 0)",
+          },
+        },
+        required: ["uri"],
+      },
+    },
+    {
+      name: "create-person-note",
+      description: "Add a new note to a person",
+      inputSchema: {
+        type: "object",
+        properties: {
+          personId: {
+            type: "string",
+            description: "ID of the person to add the note to",
+          },
+          noteTitle: {
+            type: "string",
+            description: "Title of the note",
+          },
+          noteText: {
+            type: "string",
+            description: "Text content of the note",
+          },
+        },
+        required: ["personId", "noteTitle", "noteText"],
+      },
+    }
+  ]
+};
 
 /**
  * Handles requests to list available tools
@@ -24,155 +277,42 @@ import { createErrorResult } from "../utils/error-handler.js";
 export async function handleListTools() {
   return {
     tools: [
-      // Company tools
-      {
-        name: "search-companies",
-        description: "Search for companies by name",
-        inputSchema: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "Company name or keyword to search for",
-            },
-          },
-          required: ["query"],
-        },
-      },
-      {
-        name: "read-company-details",
-        description: "Read details of a company",
-        inputSchema: {
-          type: "object",
-          properties: {
-            uri: {
-              type: "string",
-              description: "URI of the company to read",
-            },
-          },
-          required: ["uri"],
-        },
-      },
-      {
-        name: "read-company-notes",
-        description: "Read notes for a company",
-        inputSchema: {
-          type: "object",
-          properties: {
-            uri: {
-              type: "string",
-              description: "URI of the company to read notes for",
-            },
-            limit: {
-              type: "number",
-              description: "Maximum number of notes to fetch (optional, default 10)",
-            },
-            offset: {
-              type: "number",
-              description: "Number of notes to skip (optional, default 0)",
-            },
-          },
-          required: ["uri"],
-        },
-      },
-      {
-        name: "create-company-note",
-        description: "Add a new note to a company",
-        inputSchema: {
-          type: "object",
-          properties: {
-            companyId: {
-              type: "string",
-              description: "ID of the company to add the note to",
-            },
-            noteTitle: {
-              type: "string",
-              description: "Title of the note",
-            },
-            noteText: {
-              type: "string",
-              description: "Text content of the note",
-            },
-          },
-          required: ["companyId", "noteTitle", "noteText"],
-        },
-      },
-      
-      // People tools
-      {
-        name: "search-people",
-        description: "Search for people by name",
-        inputSchema: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "Person name or keyword to search for",
-            },
-          },
-          required: ["query"],
-        },
-      },
-      {
-        name: "read-person-details",
-        description: "Read details of a person",
-        inputSchema: {
-          type: "object",
-          properties: {
-            uri: {
-              type: "string",
-              description: "URI of the person to read",
-            },
-          },
-          required: ["uri"],
-        },
-      },
-      {
-        name: "read-person-notes",
-        description: "Read notes for a person",
-        inputSchema: {
-          type: "object",
-          properties: {
-            uri: {
-              type: "string",
-              description: "URI of the person to read notes for",
-            },
-            limit: {
-              type: "number",
-              description: "Maximum number of notes to fetch (optional, default 10)",
-            },
-            offset: {
-              type: "number",
-              description: "Number of notes to skip (optional, default 0)",
-            },
-          },
-          required: ["uri"],
-        },
-      },
-      {
-        name: "create-person-note",
-        description: "Add a new note to a person",
-        inputSchema: {
-          type: "object",
-          properties: {
-            personId: {
-              type: "string",
-              description: "ID of the person to add the note to",
-            },
-            noteTitle: {
-              type: "string",
-              description: "Title of the note",
-            },
-            noteText: {
-              type: "string",
-              description: "Text content of the note",
-            },
-          },
-          required: ["personId", "noteTitle", "noteText"],
-        },
-      },
+      ...TOOL_DEFINITIONS[ResourceType.COMPANIES],
+      ...TOOL_DEFINITIONS[ResourceType.PEOPLE]
     ],
   };
+}
+
+// Type for tool configuration lookup result
+interface ToolConfigResult {
+  resourceType: ResourceType;
+  toolConfig: ToolConfig;
+  toolType: string;
+}
+
+/**
+ * Find the tool config for a given tool name
+ * 
+ * @param toolName - The name of the tool
+ * @returns Tool configuration or undefined if not found
+ */
+function findToolConfig(toolName: string): ToolConfigResult | undefined {
+  const toolTypes = ['search', 'details', 'notes', 'createNote'] as const;
+  
+  for (const resourceType of Object.values(ResourceType)) {
+    const resourceConfig = TOOL_CONFIGS[resourceType];
+    
+    for (const toolType of toolTypes) {
+      if (resourceConfig[toolType]?.name === toolName) {
+        return {
+          resourceType,
+          toolConfig: resourceConfig[toolType],
+          toolType
+        };
+      }
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -184,23 +324,27 @@ export async function handleListTools() {
 export async function handleCallTool(request: typeof CallToolRequestSchema._type) {
   const toolName = request.params.name;
   try {
-    // Company Search
-    if (toolName === "search-companies") {
+    const toolInfo = findToolConfig(toolName);
+    
+    if (!toolInfo) {
+      throw new Error(`Tool not found: ${toolName}`);
+    }
+    
+    const { resourceType, toolConfig, toolType } = toolInfo;
+    
+    // Handle search tools
+    if (toolType === 'search') {
       const query = request.params.arguments?.query as string;
       try {
-        const results = await searchCompanies(query);
-
-        const companies = results.map((company: any) => {
-          const companyName = company.values?.name?.[0]?.value || "Unknown Company";
-          const companyId = company.id?.record_id || "Record ID not found";
-          return `${companyName}: attio://companies/${companyId}`;
-        }).join("\n");
+        const searchToolConfig = toolConfig as SearchToolConfig;
+        const results = await searchToolConfig.handler(query);
+        const formattedResults = searchToolConfig.formatResult(results);
         
         return {
           content: [
             {
               type: "text",
-              text: `Found ${results.length} companies:\n${companies}`,
+              text: `Found ${results.length} ${resourceType}:\n${formattedResults}`,
             },
           ],
           isError: false,
@@ -208,24 +352,29 @@ export async function handleCallTool(request: typeof CallToolRequestSchema._type
       } catch (error) {
         return createErrorResult(
           error instanceof Error ? error : new Error("Unknown error"),
-          "/objects/companies/records/query",
+          `/objects/${resourceType}/records/query`,
           "POST",
           (error as any).response?.data || {}
         );
       }
     }
-
-    // Company Details
-    if (toolName === "read-company-details") {
+    
+    // Handle details tools
+    if (toolType === 'details') {
       const uri = request.params.arguments?.uri as string;
-      const companyId = uri.replace("attio://companies/", "");
+      
       try {
-        const company = await getCompanyDetails(companyId);
+        const [uriType, id] = parseResourceUri(uri);
+        if (uriType !== resourceType) {
+          throw new Error(`URI type mismatch: Expected ${resourceType}, got ${uriType}`);
+        }
+        
+        const details = await toolConfig.handler(id);
         return {
           content: [
             {
               type: "text",
-              text: `Company details for ${companyId}:\n${JSON.stringify(company, null, 2)}`,
+              text: `${resourceType.slice(0, -1).charAt(0).toUpperCase() + resourceType.slice(1, -1)} details for ${id}:\n${JSON.stringify(details, null, 2)}`,
             },
           ],
           isError: false,
@@ -233,28 +382,32 @@ export async function handleCallTool(request: typeof CallToolRequestSchema._type
       } catch (error) {
         return createErrorResult(
           error instanceof Error ? error : new Error("Unknown error"),
-          `/objects/companies/records/${companyId}`,
+          uri,
           "GET",
           (error as any).response?.data || {}
         );
       }
     }
-
-    // Company Notes
-    if (toolName === "read-company-notes") {
+    
+    // Handle notes tools
+    if (toolType === 'notes') {
       const uri = request.params.arguments?.uri as string;
       const limit = request.params.arguments?.limit as number || 10;
       const offset = request.params.arguments?.offset as number || 0;
-      const companyId = uri.replace("attio://companies/", "");
       
       try {
-        const notes = await getCompanyNotes(companyId, limit, offset);
-
+        const [uriType, id] = parseResourceUri(uri);
+        if (uriType !== resourceType) {
+          throw new Error(`URI type mismatch: Expected ${resourceType}, got ${uriType}`);
+        }
+        
+        const notes = await toolConfig.handler(id, limit, offset);
+        
         return {
           content: [
             {
               type: "text",
-              text: `Found ${notes.length} notes for company ${companyId}:\n${notes.map((note: any) => JSON.stringify(note)).join("----------\n")}`,
+              text: `Found ${notes.length} notes for ${resourceType.slice(0, -1)} ${id}:\n${notes.map((note: any) => JSON.stringify(note)).join("----------\n")}`,
             },
           ],
           isError: false,
@@ -262,27 +415,29 @@ export async function handleCallTool(request: typeof CallToolRequestSchema._type
       } catch (error) {
         return createErrorResult(
           error instanceof Error ? error : new Error("Unknown error"),
-          `/notes?limit=${limit}&offset=${offset}&parent_object=companies&parent_record_id=${companyId}`,
+          uri,
           "GET",
           (error as any).response?.data || {}
         );
       }
     }
-
-    // Create Company Note
-    if (toolName === "create-company-note") {
-      const companyId = request.params.arguments?.companyId as string;
+    
+    // Handle create note tools
+    if (toolType === 'createNote') {
+      const createNoteConfig = toolConfig as CreateNoteToolConfig;
+      const idParam = createNoteConfig.idParam;
+      const id = request.params.arguments?.[idParam] as string;
       const noteTitle = request.params.arguments?.noteTitle as string;
       const noteText = request.params.arguments?.noteText as string;
       
       try {
-        const response = await createCompanyNote(companyId, noteTitle, noteText);
-
+        const response = await toolConfig.handler(id, noteTitle, noteText);
+        
         return {
           content: [
             {
               type: "text",
-              text: `Note added to company ${companyId}: attio://notes/${response?.id?.note_id}`,
+              text: `Note added to ${resourceType.slice(0, -1)} ${id}: attio://notes/${response?.id?.note_id}`,
             },
           ],
           isError: false,
@@ -296,121 +451,8 @@ export async function handleCallTool(request: typeof CallToolRequestSchema._type
         );
       }
     }
-
-    // Person Search
-    if (toolName === "search-people") {
-      const query = request.params.arguments?.query as string;
-      try {
-        const results = await searchPeople(query);
-
-        const people = results.map((person: any) => {
-          const personName = person.values?.name?.[0]?.value || "Unknown Person";
-          const personId = person.id?.record_id || "Record ID not found";
-          return `${personName}: attio://people/${personId}`;
-        }).join("\n");
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Found ${results.length} people:\n${people}`,
-            },
-          ],
-          isError: false,
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          "/objects/people/records/query",
-          "POST",
-          (error as any).response?.data || {}
-        );
-      }
-    }
-
-    // Person Details
-    if (toolName === "read-person-details") {
-      const uri = request.params.arguments?.uri as string;
-      const personId = uri.replace("attio://people/", "");
-      try {
-        const person = await getPersonDetails(personId);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Person details for ${personId}:\n${JSON.stringify(person, null, 2)}`,
-            },
-          ],
-          isError: false,
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          `/objects/people/records/${personId}`,
-          "GET",
-          (error as any).response?.data || {}
-        );
-      }
-    }
-
-    // Person Notes
-    if (toolName === "read-person-notes") {
-      const uri = request.params.arguments?.uri as string;
-      const limit = request.params.arguments?.limit as number || 10;
-      const offset = request.params.arguments?.offset as number || 0;
-      const personId = uri.replace("attio://people/", "");
-      
-      try {
-        const notes = await getPersonNotes(personId, limit, offset);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Found ${notes.length} notes for person ${personId}:\n${notes.map((note: any) => JSON.stringify(note)).join("----------\n")}`,
-            },
-          ],
-          isError: false,
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          `/notes?limit=${limit}&offset=${offset}&parent_object=people&parent_record_id=${personId}`,
-          "GET",
-          (error as any).response?.data || {}
-        );
-      }
-    }
-
-    // Create Person Note
-    if (toolName === "create-person-note") {
-      const personId = request.params.arguments?.personId as string;
-      const noteTitle = request.params.arguments?.noteTitle as string;
-      const noteText = request.params.arguments?.noteText as string;
-      
-      try {
-        const response = await createPersonNote(personId, noteTitle, noteText);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Note added to person ${personId}: attio://notes/${response?.id?.note_id}`,
-            },
-          ],
-          isError: false,
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          "/notes",
-          "POST",
-          (error as any).response?.data || {}
-        );
-      }
-    }
-
-    throw new Error(`Tool not found: ${toolName}`);
+    
+    throw new Error(`Tool handler not implemented for tool type: ${toolType}`);
   } catch (error) {
     return {
       content: [

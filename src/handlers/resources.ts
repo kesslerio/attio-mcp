@@ -5,6 +5,23 @@ import {
 import { listCompanies, getCompanyDetails } from "../objects/companies.js";
 import { listPeople, getPersonDetails } from "../objects/people.js";
 import { createErrorResult } from "../utils/error-handler.js";
+import { parseResourceUri, formatResourceUri } from "../utils/uri-parser.js";
+import { ResourceType, AttioRecord } from "../types/attio.js";
+
+/**
+ * Format a single record for resource response
+ * 
+ * @param record - The record to format
+ * @param type - The type of resource
+ * @returns Formatted resource object
+ */
+function formatRecordAsResource(record: AttioRecord, type: ResourceType) {
+  return {
+    uri: formatResourceUri(type, record.id?.record_id || ""),
+    name: record.values?.name?.[0]?.value || `Unknown ${type.slice(0, -1)}`,
+    mimeType: "application/json",
+  };
+}
 
 /**
  * Handles requests to list resources
@@ -17,48 +34,42 @@ import { createErrorResult } from "../utils/error-handler.js";
  */
 export async function handleListResources(request: typeof ListResourcesRequestSchema._type) {
   try {
-    // If resource type specified in request is 'people' 
-    if (request.params?.type === 'people') {
-      try {
-        const people = await listPeople();
+    // Determine resource type (default to companies if not specified)
+    const resourceType = request.params?.type as ResourceType || ResourceType.COMPANIES;
 
-        return {
-          resources: people.map((person: any) => ({
-            uri: `attio://people/${person.id?.record_id}`,
-            name: person.values?.name?.[0]?.value || "Unknown Person",
-            mimeType: "application/json",
-          })),
-          description: `Found ${people.length} people that you have interacted with most recently`,
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          "/objects/people/records/query",
-          "POST",
-          (error as any).response?.data || {}
-        );
-      }
-    }
-    
-    // Default to companies if no specific type is requested
-    try {
-      const companies = await listCompanies();
+    switch (resourceType) {
+      case ResourceType.PEOPLE:
+        try {
+          const people = await listPeople();
+          return {
+            resources: people.map(person => formatRecordAsResource(person, ResourceType.PEOPLE)),
+            description: `Found ${people.length} people that you have interacted with most recently`,
+          };
+        } catch (error) {
+          return createErrorResult(
+            error instanceof Error ? error : new Error("Unknown error"),
+            `/objects/people/records/query`,
+            "POST",
+            (error as any).response?.data || {}
+          );
+        }
 
-      return {
-        resources: companies.map((company: any) => ({
-          uri: `attio://companies/${company.id?.record_id}`,
-          name: company.values?.name?.[0]?.value || "Unknown Company",
-          mimeType: "application/json",
-        })),
-        description: `Found ${companies.length} companies that you have interacted with most recently`,
-      };
-    } catch (error) {
-      return createErrorResult(
-        error instanceof Error ? error : new Error("Unknown error"),
-        "/objects/companies/records/query",
-        "POST",
-        (error as any).response?.data || {}
-      );
+      case ResourceType.COMPANIES:
+      default:
+        try {
+          const companies = await listCompanies();
+          return {
+            resources: companies.map(company => formatRecordAsResource(company, ResourceType.COMPANIES)),
+            description: `Found ${companies.length} companies that you have interacted with most recently`,
+          };
+        } catch (error) {
+          return createErrorResult(
+            error instanceof Error ? error : new Error("Unknown error"),
+            `/objects/companies/records/query`,
+            "POST",
+            (error as any).response?.data || {}
+          );
+        }
     }
   } catch (error) {
     return createErrorResult(
@@ -81,57 +92,57 @@ export async function handleListResources(request: typeof ListResourcesRequestSc
  */
 export async function handleReadResource(request: typeof ReadResourceRequestSchema._type) {
   try {
-    // Handle requests for people resources
-    if (request.params.uri.startsWith("attio://people/")) {
-      const personId = request.params.uri.replace("attio://people/", "");
-      try {
-        const person = await getPersonDetails(personId);
+    const uri = request.params.uri;
+    const [resourceType, id] = parseResourceUri(uri);
+
+    switch (resourceType) {
+      case ResourceType.PEOPLE:
+        try {
+          const person = await getPersonDetails(id);
+          
+          return {
+            contents: [
+              {
+                uri,
+                text: JSON.stringify(person, null, 2),
+                mimeType: "application/json",
+              },
+            ],
+          };
+        } catch (error) {
+          return createErrorResult(
+            error instanceof Error ? error : new Error("Unknown error"),
+            `/objects/people/${id}`,
+            "GET",
+            (error as any).response?.data || {}
+          );
+        }
+      
+      case ResourceType.COMPANIES:
+        try {
+          const company = await getCompanyDetails(id);
+          
+          return {
+            contents: [
+              {
+                uri,
+                text: JSON.stringify(company, null, 2),
+                mimeType: "application/json",
+              },
+            ],
+          };
+        } catch (error) {
+          return createErrorResult(
+            error instanceof Error ? error : new Error("Unknown error"),
+            `/objects/companies/${id}`,
+            "GET",
+            (error as any).response?.data || {}
+          );
+        }
         
-        return {
-          contents: [
-            {
-              uri: request.params.uri,
-              text: JSON.stringify(person, null, 2),
-              mimeType: "application/json",
-            },
-          ],
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          `/objects/people/${personId}`,
-          "GET",
-          (error as any).response?.data || {}
-        );
-      }
+      default:
+        throw new Error(`Unsupported resource type: ${resourceType}`);
     }
-    
-    // Handle requests for company resources
-    if (request.params.uri.startsWith("attio://companies/")) {
-      const companyId = request.params.uri.replace("attio://companies/", "");
-      try {
-        const company = await getCompanyDetails(companyId);
-        
-        return {
-          contents: [
-            {
-              uri: request.params.uri,
-              text: JSON.stringify(company, null, 2),
-              mimeType: "application/json",
-            },
-          ],
-        };
-      } catch (error) {
-        return createErrorResult(
-          error instanceof Error ? error : new Error("Unknown error"),
-          `/objects/companies/${companyId}`,
-          "GET",
-          (error as any).response?.data || {}
-        );
-      }
-    }
-    
-    throw new Error(`Unsupported resource URI: ${request.params.uri}`);
   } catch (error) {
     return createErrorResult(
       error instanceof Error ? error : new Error("Unknown error"),
