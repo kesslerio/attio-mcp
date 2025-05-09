@@ -14,7 +14,9 @@
     "build": "tsc",
     "postbuild": "shx chmod +x dist/*.js",
     "check": "tsc --noEmit",
-    "build:watch": "tsc --watch"
+    "build:watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "files": [
     "dist"
@@ -32,12 +34,5 @@
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.2",
     "typescript": "^5.8.3"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "testPathIgnorePatterns": [
-      "<rootDir>/dist/"
-    ]
   }
 }
