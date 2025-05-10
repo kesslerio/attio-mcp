@@ -15,7 +15,14 @@ describe('attio-client', () => {
     it('should create an axios instance with correct configuration', () => {
       // Arrange
       const apiKey = 'test-api-key';
-      const mockAxiosInstance = { defaults: {} };
+      const mockAxiosInstance = { 
+        defaults: {},
+        interceptors: {
+          response: {
+            use: jest.fn()
+          }
+        }
+      };
       mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
 
       // Act
@@ -30,6 +37,7 @@ describe('attio-client', () => {
         },
       });
       expect(result).toBe(mockAxiosInstance);
+      expect(mockAxiosInstance.interceptors.response.use).toHaveBeenCalled();
     });
   });
 
@@ -37,7 +45,14 @@ describe('attio-client', () => {
     it('should initialize the API client and make it retrievable', () => {
       // Arrange
       const apiKey = 'test-api-key';
-      const mockAxiosInstance = { defaults: {} };
+      const mockAxiosInstance = { 
+        defaults: {},
+        interceptors: {
+          response: {
+            use: jest.fn()
+          }
+        }
+      };
       mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
 
       // Act

@@ -2,6 +2,7 @@
  * Attio API client and related utilities
  */
 import axios, { AxiosInstance } from "axios";
+import { createAttioError } from "../utils/error-handler.js";
 
 // Global API client instance
 let apiInstance: AxiosInstance | null = null;
@@ -13,13 +14,24 @@ let apiInstance: AxiosInstance | null = null;
  * @returns Configured Axios instance
  */
 export function createAttioClient(apiKey: string): AxiosInstance {
-  return axios.create({
+  const client = axios.create({
     baseURL: "https://api.attio.com/v2",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
   });
+  
+  // Add response interceptor for error handling
+  client.interceptors.response.use(
+    response => response,
+    error => {
+      const enhancedError = createAttioError(error);
+      return Promise.reject(enhancedError);
+    }
+  );
+  
+  return client;
 }
 
 /**
