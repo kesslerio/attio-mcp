@@ -14,7 +14,9 @@
     "build": "tsc",
     "postbuild": "shx chmod +x dist/*.js",
     "check": "tsc --noEmit",
-    "build:watch": "tsc --watch"
+    "build:watch": "tsc --watch",
+    "setup-hooks": "bash ./build/install-hooks.sh",
+    "postinstall": "npm run setup-hooks"
   },
   "files": [
     "dist"
