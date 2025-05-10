@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm ci
+# Skip hooks setup in builder stage too
+RUN npm config set ignore-scripts true && npm ci
 
 # Copy source code
 COPY . .
@@ -23,7 +24,8 @@ RUN addgroup -S attio && \
 
 # Copy package files and install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production
+# Skip hooks setup in production
+RUN npm config set ignore-scripts true && npm ci --only=production
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist

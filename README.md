@@ -146,33 +146,33 @@ You can also run the Attio MCP Server in a Docker container, which simplifies de
 
    ```sh
    ATTIO_API_KEY=your_api_key_here
-   ATTIO_WORKSPACE_ID=your_workspace_id_here
    ```
 
 2. Start the container using Docker Compose:
 
    ```sh
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. Check logs:
 
    ```sh
-   docker-compose logs -f
+   docker compose logs -f
    ```
 
 4. Stop the container:
 
    ```sh
-   docker-compose down
+   docker compose down
    ```
 
 ### Running with Docker Directly
 
 ```sh
-docker run -p 3000:3000 \
+docker run -p 9876:3000 \
   -e ATTIO_API_KEY=your_api_key_here \
-  -e ATTIO_WORKSPACE_ID=your_workspace_id_here \
+  --restart unless-stopped \
+  --name attio-mcp-server \
   attio-mcp-server:latest
 ```
 
@@ -184,11 +184,13 @@ To use the dockerized Attio MCP Server with Claude:
 {
   "mcpServers": {
     "attio": {
-      "url": "http://localhost:3000"
+      "url": "http://localhost:9876"
     }
   }
 }
 ```
+
+The server is configured to use port 9876 externally to avoid conflicts with common services. You can change this port in the `docker-compose.yml` file if needed.
 
 ### Docker Health Check
 
