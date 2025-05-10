@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# pre-commit hook to prevent Claude Code and AI attribution messages
+# pre-commit hook to remove Claude Code and AI attribution messages
 # Place this file in .git/hooks/pre-commit and make executable with: chmod +x .git/hooks/pre-commit
 
 # Ensure the hook is being executed
@@ -35,32 +35,74 @@ ATTRIBUTION_PATTERNS=(
   "Created with Claude"
 )
 
-# Check commit message for attribution patterns
+# Auto-clean commit message if it contains attribution patterns
+cleaned_commit=0
 for pattern in "${ATTRIBUTION_PATTERNS[@]}"; do
   if echo "$commit_msg" | grep -Eq "$pattern"; then
-    echo -e "${RED}Error:${NC} Commit message contains AI attribution: '${YELLOW}$pattern${NC}'"
-    echo -e "Please remove the attribution from your commit message and try again."
-    echo -e "AI attribution messages are not allowed as per project guidelines."
-    exit 1
+    echo -e "${YELLOW}Warning:${NC} Commit message contains AI attribution: '${YELLOW}$pattern${NC}'"
+    echo -e "Automatically removing the attribution..."
+    
+    # Save original commit message to temporary file
+    if [ -f "$commit_msg_file" ]; then
+      # Remove the pattern from the commit message
+      sed -i.bak "/$pattern/d" "$commit_msg_file"
+      rm -f "${commit_msg_file}.bak"
+      cleaned_commit=1
+    else
+      echo -e "${RED}Error:${NC} Cannot auto-clean commit message - commit message file not found."
+      echo -e "Please remove the attribution manually and try again."
+      exit 1
+    fi
   fi
 done
 
-# Check staged files for attribution patterns
+# Auto-clean staged files for attribution patterns
 staged_files=$(git diff --cached --name-only)
+files_to_clean=()
 
 for file in $staged_files; do
   # Skip binary files
   if [[ $(file -b --mime-type "$file") == text/* ]]; then
+    file_modified=0
+    
     for pattern in "${ATTRIBUTION_PATTERNS[@]}"; do
       if git diff --cached --unified=0 "$file" | grep -Eq "^\+.*$pattern"; then
-        echo -e "${RED}Error:${NC} File '${YELLOW}$file${NC}' contains AI attribution: '${YELLOW}$pattern${NC}'"
-        echo -e "Please remove the attribution from your changes and stage the file again."
-        echo -e "AI attribution messages are not allowed as per project guidelines."
-        exit 1
+        echo -e "${YELLOW}Warning:${NC} File '${YELLOW}$file${NC}' contains AI attribution: '${YELLOW}$pattern${NC}'"
+        echo -e "Automatically cleaning file..."
+        
+        # Create a temporary file for cleaning
+        temp_file=$(mktemp)
+        git show ":$file" > "$temp_file"
+        
+        # Remove the pattern from the file
+        sed -i.bak "/$pattern/d" "$temp_file"
+        rm -f "${temp_file}.bak"
+        
+        # Replace staged content with cleaned content
+        cat "$temp_file" > "$file"
+        git add "$file"
+        
+        rm -f "$temp_file"
+        file_modified=1
       fi
     done
+    
+    if [ $file_modified -eq 1 ]; then
+      files_to_clean+=("$file")
+    fi
   fi
 done
 
-echo -e "${GREEN}✅ No AI attribution messages found.${NC}"
+if [ ${#files_to_clean[@]} -gt 0 ]; then
+  echo -e "${GREEN}✅ Cleaned ${#files_to_clean[@]} files of AI attribution messages.${NC}"
+fi
+
+if [ $cleaned_commit -eq 1 ]; then
+  echo -e "${GREEN}✅ Cleaned commit message of AI attribution.${NC}"
+fi
+
+if [ ${#files_to_clean[@]} -eq 0 ] && [ $cleaned_commit -eq 0 ]; then
+  echo -e "${GREEN}✅ No AI attribution messages found.${NC}"
+fi
+
 exit 0
