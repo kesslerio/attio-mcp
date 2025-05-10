@@ -5,21 +5,19 @@ Purpose: GitHub workflow system for the Attio MCP project
 
 Project Structure:
 - /src/ - Core source files
-- /dist/ - Distribution files
+- /dist/ - Distribution files (build output, not tracked in git)
 - /test/ - Test files
 - /docs/ - Documentation
-- /scripts/ - Utility scripts
-- /build/ - Build system
+- /build/ - Build system and workflow scripts
 
 DEVELOPMENT WORKFLOW
 
 File Organization:
 - Core source files: /src/
-- Distribution files: /dist/
+- Distribution files: /dist/ (generated, not tracked in git)
 - Test files: /test/
 - Documentation: /docs/
-- Utility scripts: /scripts/
-- Build system: /build/
+- Build system & workflow scripts: /build/
 
 Building and Testing:
 # Install dependencies
