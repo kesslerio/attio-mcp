@@ -1,0 +1,160 @@
+/**
+ * Lists-related functionality
+ */
+import { getAttioClient } from "../api/attio-client.js";
+import { 
+  getAllLists as getGenericLists,
+  getListDetails as getGenericListDetails,
+  getListEntries as getGenericListEntries,
+  addRecordToList as addGenericRecordToList,
+  removeRecordFromList as removeGenericRecordFromList,
+} from "../api/attio-operations.js";
+import { 
+  AttioList, 
+  AttioListEntry,
+  ResourceType 
+} from "../types/attio.js";
+
+/**
+ * Gets all lists in the workspace
+ * 
+ * @param objectSlug - Optional object type to filter lists by (e.g., 'companies', 'people')
+ * @param limit - Maximum number of lists to fetch (default: 20)
+ * @returns Array of list objects
+ */
+export async function getLists(objectSlug?: string, limit: number = 20): Promise<AttioList[]> {
+  // Use the generic operation with fallback to direct implementation
+  try {
+    return await getGenericLists(objectSlug, limit);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    let path = `/lists?limit=${limit}`;
+    
+    if (objectSlug) {
+      path += `&objectSlug=${objectSlug}`;
+    }
+    
+    const response = await api.get(path);
+    return response.data.data || [];
+  }
+}
+
+/**
+ * Gets details for a specific list
+ * 
+ * @param listId - The ID of the list
+ * @returns List details
+ */
+export async function getListDetails(listId: string): Promise<AttioList> {
+  // Use the generic operation with fallback to direct implementation
+  try {
+    return await getGenericListDetails(listId);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = `/lists/${listId}`;
+    
+    const response = await api.get(path);
+    return response.data.data || response.data;
+  }
+}
+
+/**
+ * Gets entries for a specific list
+ * 
+ * @param listId - The ID of the list
+ * @param limit - Maximum number of entries to fetch (default: 20)
+ * @param offset - Number of entries to skip (default: 0)
+ * @returns Array of list entries
+ */
+export async function getListEntries(
+  listId: string, 
+  limit: number = 20, 
+  offset: number = 0
+): Promise<AttioListEntry[]> {
+  // Use the generic operation with fallback to direct implementation
+  try {
+    return await getGenericListEntries(listId, limit, offset);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    // The API appears to use a different endpoint structure
+    // Try using the query endpoint instead of direct entries path
+    const path = `/lists/${listId}/entries/query`;
+    
+    try {
+      const response = await api.post(path, {
+        limit,
+        offset
+      });
+      return response.data.data || [];
+    } catch (innerError) {
+      // If that fails too, try the recommended structure from API docs
+      const altPath = `/lists-entries/query`;
+      try {
+        const altResponse = await api.post(altPath, {
+          list_id: listId,
+          limit,
+          offset
+        });
+        return altResponse.data.data || [];
+      } catch (finalError) {
+        // Last resort, try the query endpoint
+        const queryPath = `/lists-entries?list_id=${listId}&limit=${limit}&offset=${offset}`;
+        const queryResponse = await api.get(queryPath);
+        return queryResponse.data.data || [];
+      }
+    }
+  }
+}
+
+/**
+ * Adds a record to a list
+ * 
+ * @param listId - The ID of the list
+ * @param recordId - The ID of the record to add
+ * @returns The created list entry
+ */
+export async function addRecordToList(
+  listId: string, 
+  recordId: string
+): Promise<AttioListEntry> {
+  // Use the generic operation with fallback to direct implementation
+  try {
+    return await addGenericRecordToList(listId, recordId);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = `/lists/${listId}/entries`;
+    
+    const response = await api.post(path, {
+      record_id: recordId
+    });
+    return response.data.data || response.data;
+  }
+}
+
+/**
+ * Removes a record from a list
+ * 
+ * @param listId - The ID of the list
+ * @param entryId - The ID of the list entry to remove
+ * @returns True if successful
+ */
+export async function removeRecordFromList(
+  listId: string, 
+  entryId: string
+): Promise<boolean> {
+  // Use the generic operation with fallback to direct implementation
+  try {
+    return await removeGenericRecordFromList(listId, entryId);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = `/lists/${listId}/entries/${entryId}`;
+    
+    await api.delete(path);
+    return true;
+  }
+}
