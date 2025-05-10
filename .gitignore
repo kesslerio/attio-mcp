@@ -130,3 +130,13 @@ out
 
 .DS_Store
 dist/
+
+# Internal docs and scripts
+CONTRIB.md
+run-test.sh
+test-people.js
+test-search.js
+
+# Claude and other tools
+**/.claude/
+CLAUDE.md
