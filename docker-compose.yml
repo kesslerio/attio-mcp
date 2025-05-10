@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  attio-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: attio-mcp-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Add your Attio API credentials here or through a .env file
+      - ATTIO_API_KEY=${ATTIO_API_KEY}
+      - ATTIO_WORKSPACE_ID=${ATTIO_WORKSPACE_ID}
+    volumes:
+      # Add volume mounts if needed for persistent data
+      - ./config:/app/config
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - attio-network
+
+networks:
+  attio-network:
+    driver: bridge
