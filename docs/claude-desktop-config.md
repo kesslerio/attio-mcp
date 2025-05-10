@@ -17,12 +17,13 @@ Add the following configuration to your Claude Desktop configuration file:
 
 ```json
 {
-  "mcp_servers": {
+  "mcpServers": {
     "attio": {
       "command": "npx",
       "args": ["attio-mcp-server"],
       "env": {
-        "ATTIO_API_KEY": "your_attio_api_key_here"
+        "ATTIO_API_KEY": "your_attio_api_key_here",
+        "PORT": "9876"
       }
     }
   }

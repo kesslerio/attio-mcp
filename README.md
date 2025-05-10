@@ -184,33 +184,28 @@ To use the dockerized Attio MCP Server with Claude:
 {
   "mcpServers": {
     "attio": {
-      "command": "docker",
-      "args": ["run", "--rm", "-p", "9876:3000", "-e", "ATTIO_API_KEY=${ATTIO_API_KEY}", "attio-mcp-server:latest"],
+      "command": "npx",
+      "args": ["attio-mcp-server"],
       "env": {
-        "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY"
+        "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY",
+        "PORT": "9876"
       }
     }
   }
 }
 ```
 
-Or, if you're running the container with docker-compose (recommended), use:
+If you're running the Docker container separately, first make sure it's running:
 
-```json
-{
-  "mcpServers": {
-    "attio": {
-      "command": "node",
-      "args": ["/path/to/attio-mcp-server/dist/index.js"],
-      "env": {
-        "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY"
-      }
-    }
-  }
-}
+```sh
+# Start with docker-compose
+docker compose up -d
+
+# Or start with docker directly
+docker run -d -p 9876:3000 -e ATTIO_API_KEY=your_api_key_here --name attio-mcp-server attio-mcp-server:latest
 ```
 
-If your Docker container is already running and accessible at http://localhost:9876, you can configure Claude to connect to the running instance:
+Then configure Claude Desktop to connect to the running container:
 
 ```json
 {
