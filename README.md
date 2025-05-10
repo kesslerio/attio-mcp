@@ -185,7 +185,7 @@ To use the dockerized Attio MCP Server with Claude:
   "mcpServers": {
     "attio": {
       "command": "node",
-      "args": ["/Users/kesslerio/GDrive/Projects/attio-mcp-server/dist/index.js"],
+      "args": ["/Users/kesslerio/GDrive/Projects/attio-mcp-server/debug.js"],
       "env": {
         "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY",
         "PORT": "9876"
