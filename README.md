@@ -184,7 +184,10 @@ To use the dockerized Attio MCP Server with Claude:
 {
   "mcpServers": {
     "attio": {
-      "url": "http://localhost:9876"
+      "url": "http://localhost:9876",
+      "env": {
+        "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY"
+      }
     }
   }
 }
