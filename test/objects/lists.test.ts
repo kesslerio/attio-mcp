@@ -32,12 +32,18 @@ describe('lists', () => {
         { 
           id: { list_id: 'list1' },
           title: 'Test List 1',
-          object_slug: 'companies'
+          object_slug: 'companies',
+          workspace_id: 'workspace1',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-02T00:00:00Z'
         },
         { 
           id: { list_id: 'list2' },
           title: 'Test List 2',
-          object_slug: 'people'
+          object_slug: 'people',
+          workspace_id: 'workspace1',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-02T00:00:00Z'
         }
       ];
       mockedAttioOperations.getAllLists.mockResolvedValue(mockLists);
@@ -61,7 +67,10 @@ describe('lists', () => {
             { 
               id: { list_id: 'list1' },
               title: 'Test List 1',
-              object_slug: 'companies'
+              object_slug: 'companies',
+              workspace_id: 'workspace1',
+              created_at: '2023-01-01T00:00:00Z',
+              updated_at: '2023-01-02T00:00:00Z'
             }
           ]
         }
@@ -87,7 +96,10 @@ describe('lists', () => {
       const mockListDetails = { 
         id: { list_id: listId },
         title: 'Test List',
-        object_slug: 'companies'
+        object_slug: 'companies',
+        workspace_id: 'workspace1',
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-02T00:00:00Z'
       };
       mockedAttioOperations.getListDetails.mockResolvedValue(mockListDetails);
 
@@ -108,7 +120,10 @@ describe('lists', () => {
           data: { 
             id: { list_id: listId },
             title: 'Test List',
-            object_slug: 'companies'
+            object_slug: 'companies',
+            workspace_id: 'workspace1',
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-02T00:00:00Z'
           }
         }
       };
@@ -136,12 +151,16 @@ describe('lists', () => {
         { 
           id: { entry_id: 'entry1' },
           list_id: listId,
-          record_id: 'record1'
+          record_id: 'record1',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-02T00:00:00Z'
         },
         { 
           id: { entry_id: 'entry2' },
           list_id: listId,
-          record_id: 'record2'
+          record_id: 'record2',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-02T00:00:00Z'
         }
       ];
       mockedAttioOperations.getListEntries.mockResolvedValue(mockEntries);
@@ -166,7 +185,9 @@ describe('lists', () => {
             { 
               id: { entry_id: 'entry1' },
               list_id: listId,
-              record_id: 'record1'
+              record_id: 'record1',
+              created_at: '2023-01-01T00:00:00Z',
+              updated_at: '2023-01-02T00:00:00Z'
             }
           ]
         }
@@ -203,7 +224,9 @@ describe('lists', () => {
             { 
               id: { entry_id: 'entry1' },
               list_id: listId,
-              record_id: 'record1'
+              record_id: 'record1',
+              created_at: '2023-01-01T00:00:00Z',
+              updated_at: '2023-01-02T00:00:00Z'
             }
           ]
         }
@@ -245,7 +268,9 @@ describe('lists', () => {
       const mockEntry = { 
         id: { entry_id: 'entry1' },
         list_id: listId,
-        record_id: recordId
+        record_id: recordId,
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-02T00:00:00Z'
       };
       mockedAttioOperations.addRecordToList.mockResolvedValue(mockEntry);
 
@@ -267,7 +292,9 @@ describe('lists', () => {
           data: { 
             id: { entry_id: 'entry1' },
             list_id: listId,
-            record_id: recordId
+            record_id: recordId,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-02T00:00:00Z'
           }
         }
       };
