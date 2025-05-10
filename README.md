@@ -4,12 +4,24 @@ This is an MCP server for [Attio](https://attio.com/), the AI-native CRM. It all
 
 #### Current Capabilities
 
-- [x] Searching for companies and people
-- [x] Reading company and person details
-- [x] Reading company and person notes
-- [x] Creating company and person notes
-- [ ] Lists management
-- [ ] Tasks management
+- [x] Company API
+  - [x] searching companies
+  - [x] reading company details
+  - [x] reading company notes
+  - [x] creating company notes
+- [x] People API
+  - [x] searching people
+  - [x] reading person details
+  - [x] reading person notes
+  - [x] creating person notes
+- [x] Lists API
+  - [x] getting all lists
+  - [x] getting list details
+  - [x] getting list entries
+  - [x] adding records to lists
+  - [x] removing records from lists
+- [ ] Tasks API
+- [ ] Records API
 
 ## Usage
 
@@ -62,10 +74,11 @@ npm run build && npm link
 
 Before you begin, ensure you have the following installed:
 
-- Node.js (recommended v22 or higher)
+- Node.js (recommended v18 or higher)
 - npm
 - git
 - dotenv
+- Docker and Docker Compose (optional, for containerized development)
 
 ### Setting up Development Environment
 
@@ -74,7 +87,7 @@ To set up the development environment, follow these steps:
 1. Fork the repository
 
    - Click the "Fork" button in the top-right corner of this repository
-   - This creates your own copy of the repository under your Github acocunt
+   - This creates your own copy of the repository under your Github account
 
 1. Clone Your Fork:
 
@@ -111,24 +124,76 @@ To set up the development environment, follow these steps:
    dotenv npx @modelcontextprotocol/inspector node ./dist/index.js
    ```
 
-1. If the development server did not load the environment variable correctly, set the `ATTIO_API_KEY` on the left-hand side of the MCP inspector.
+1. If the development server did not load the environment variable correctly, set the `ATTIO_API_KEY` on the left-hand side of the mcp inspector.
 
-## Testing
+## Docker Support
 
-To run the test suite:
+You can also run the Attio MCP Server in a Docker container, which simplifies deployment and ensures consistency across different environments.
+
+### Building the Docker Image
 
 ```sh
-npm test
+# Build using the provided script
+./scripts/docker-build.sh
+
+# Or build with custom name and tag
+./scripts/docker-build.sh --name my-attio-mcp --tag v1.0.0
 ```
 
-To run only people-related tests:
+### Running with Docker Compose
+
+1. Set up your environment variables in a `.env` file:
+
+   ```sh
+   ATTIO_API_KEY=your_api_key_here
+   ATTIO_WORKSPACE_ID=your_workspace_id_here
+   ```
+
+2. Start the container using Docker Compose:
+
+   ```sh
+   docker-compose up -d
+   ```
+
+3. Check logs:
+
+   ```sh
+   docker-compose logs -f
+   ```
+
+4. Stop the container:
+
+   ```sh
+   docker-compose down
+   ```
+
+### Running with Docker Directly
 
 ```sh
-npm test -- -t "people"
+docker run -p 3000:3000 \
+  -e ATTIO_API_KEY=your_api_key_here \
+  -e ATTIO_WORKSPACE_ID=your_workspace_id_here \
+  attio-mcp-server:latest
 ```
 
-To run only company-related tests:
+### Docker Configuration for Claude
+
+To use the dockerized Attio MCP Server with Claude:
+
+```json
+{
+  "mcpServers": {
+    "attio": {
+      "url": "http://localhost:3000"
+    }
+  }
+}
+```
+
+### Docker Health Check
+
+The Docker container includes a health check that monitors the server's status. You can view the health status with:
 
 ```sh
-npm test -- -t "companies"
+docker ps -a
 ```

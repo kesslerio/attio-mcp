@@ -6,7 +6,9 @@ import {
   AttioListResponse,
   AttioSingleResponse,
   Person,
-  Company
+  Company,
+  AttioList,
+  AttioListEntry
 } from "../types/attio.js";
 
 /**
@@ -154,6 +156,161 @@ export async function createObjectNote(
       throw new Error(`Failed to create note: ${error.response.data.message || 'Invalid parameters'}`);
     } else if (error.response?.status === 404) {
       throw new Error(`${objectType.charAt(0).toUpperCase() + objectType.slice(1, -1)} with ID ${recordId} not found`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets all lists in the workspace
+ * 
+ * @param objectSlug - Optional object type to filter lists by (e.g., 'companies', 'people')
+ * @param limit - Maximum number of lists to fetch (default: 20)
+ * @returns Array of list objects
+ */
+export async function getAllLists(
+  objectSlug?: string, 
+  limit: number = 20
+): Promise<AttioList[]> {
+  const api = getAttioClient();
+  let path = `/lists?limit=${limit}`;
+  
+  if (objectSlug) {
+    path += `&objectSlug=${objectSlug}`;
+  }
+  
+  try {
+    const response = await api.get<AttioListResponse<AttioList>>(path);
+    return response.data.data || [];
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error('Invalid parameters when fetching lists');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets details for a specific list
+ * 
+ * @param listId - The ID of the list
+ * @returns List details
+ */
+export async function getListDetails(
+  listId: string
+): Promise<AttioList> {
+  const api = getAttioClient();
+  const path = `/lists/${listId}`;
+  
+  try {
+    const response = await api.get<AttioSingleResponse<AttioList>>(path);
+    return response.data.data || response.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      throw new Error(`List with ID ${listId} not found`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets entries for a specific list
+ * 
+ * @param listId - The ID of the list
+ * @param limit - Maximum number of entries to fetch (default: 20)
+ * @param offset - Number of entries to skip (default: 0)
+ * @returns Array of list entries
+ */
+export async function getListEntries(
+  listId: string, 
+  limit: number = 20, 
+  offset: number = 0
+): Promise<AttioListEntry[]> {
+  const api = getAttioClient();
+  
+  // Try the primary endpoint first
+  try {
+    const path = `/lists/${listId}/entries/query`;
+    const response = await api.post<AttioListResponse<AttioListEntry>>(path, {
+      limit,
+      offset
+    });
+    return response.data.data || [];
+  } catch (primaryError) {
+    // Try fallback endpoints
+    try {
+      const fallbackPath = `/lists-entries/query`;
+      const fallbackResponse = await api.post<AttioListResponse<AttioListEntry>>(fallbackPath, {
+        list_id: listId,
+        limit,
+        offset
+      });
+      return fallbackResponse.data.data || [];
+    } catch (fallbackError) {
+      // Last resort fallback
+      try {
+        const lastPath = `/lists-entries?list_id=${listId}&limit=${limit}&offset=${offset}`;
+        const lastResponse = await api.get<AttioListResponse<AttioListEntry>>(lastPath);
+        return lastResponse.data.data || [];
+      } catch (lastError: any) {
+        if (lastError.response?.status === 404) {
+          throw new Error(`List entries for list ${listId} not found`);
+        }
+        throw lastError;
+      }
+    }
+  }
+}
+
+/**
+ * Adds a record to a list
+ * 
+ * @param listId - The ID of the list
+ * @param recordId - The ID of the record to add
+ * @returns The created list entry
+ */
+export async function addRecordToList(
+  listId: string, 
+  recordId: string
+): Promise<AttioListEntry> {
+  const api = getAttioClient();
+  const path = `/lists/${listId}/entries`;
+  
+  try {
+    const response = await api.post<AttioSingleResponse<AttioListEntry>>(path, {
+      record_id: recordId
+    });
+    return response.data.data || response.data;
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      throw new Error(`Failed to add record: ${error.response.data.message || 'Invalid parameters'}`);
+    } else if (error.response?.status === 404) {
+      throw new Error(`List with ID ${listId} not found`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Removes a record from a list
+ * 
+ * @param listId - The ID of the list
+ * @param entryId - The ID of the list entry to remove
+ * @returns True if successful
+ */
+export async function removeRecordFromList(
+  listId: string, 
+  entryId: string
+): Promise<boolean> {
+  const api = getAttioClient();
+  const path = `/lists/${listId}/entries/${entryId}`;
+  
+  try {
+    await api.delete(path);
+    return true;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      throw new Error(`List entry ${entryId} in list ${listId} not found`);
     }
     throw error;
   }

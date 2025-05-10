@@ -61,6 +61,59 @@ export async function getListDetails(listId: string): Promise<AttioList> {
 }
 
 /**
+ * Utility function to attempt multiple API endpoints for list entries
+ * 
+ * @param listId - The ID of the list
+ * @param limit - Maximum number of entries to fetch
+ * @param offset - Number of entries to skip
+ * @returns Array of list entries
+ */
+async function tryMultipleListEntryEndpoints(
+  listId: string,
+  limit: number,
+  offset: number
+): Promise<AttioListEntry[]> {
+  const api = getAttioClient();
+  const endpoints = [
+    // Path 1: Direct query endpoint for the specific list
+    {
+      method: 'post',
+      path: `/lists/${listId}/entries/query`,
+      data: { limit, offset }
+    },
+    // Path 2: General lists entries query endpoint
+    {
+      method: 'post',
+      path: `/lists-entries/query`,
+      data: { list_id: listId, limit, offset }
+    },
+    // Path 3: GET request on lists-entries
+    {
+      method: 'get',
+      path: `/lists-entries?list_id=${listId}&limit=${limit}&offset=${offset}`,
+      data: null
+    }
+  ];
+
+  // Try each endpoint in sequence until one works
+  for (const endpoint of endpoints) {
+    try {
+      const response = endpoint.method === 'post'
+        ? await api.post(endpoint.path, endpoint.data)
+        : await api.get(endpoint.path);
+      
+      return response.data.data || [];
+    } catch (error) {
+      // Continue to next endpoint on failure
+      continue;
+    }
+  }
+  
+  // If all endpoints fail, return empty array
+  return [];
+}
+
+/**
  * Gets entries for a specific list
  * 
  * @param listId - The ID of the list
@@ -77,35 +130,8 @@ export async function getListEntries(
   try {
     return await getGenericListEntries(listId, limit, offset);
   } catch (error) {
-    // Fallback implementation
-    const api = getAttioClient();
-    // The API appears to use a different endpoint structure
-    // Try using the query endpoint instead of direct entries path
-    const path = `/lists/${listId}/entries/query`;
-    
-    try {
-      const response = await api.post(path, {
-        limit,
-        offset
-      });
-      return response.data.data || [];
-    } catch (innerError) {
-      // If that fails too, try the recommended structure from API docs
-      const altPath = `/lists-entries/query`;
-      try {
-        const altResponse = await api.post(altPath, {
-          list_id: listId,
-          limit,
-          offset
-        });
-        return altResponse.data.data || [];
-      } catch (finalError) {
-        // Last resort, try the query endpoint
-        const queryPath = `/lists-entries?list_id=${listId}&limit=${limit}&offset=${offset}`;
-        const queryResponse = await api.get(queryPath);
-        return queryResponse.data.data || [];
-      }
-    }
+    // Fallback to multi-endpoint utility function
+    return await tryMultipleListEntryEndpoints(listId, limit, offset);
   }
 }
 

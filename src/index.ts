@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { initializeAttioClient } from "./api/attio-client.js";
 import { registerResourceHandlers } from "./handlers/resources.js";
 import { registerToolHandlers } from "./handlers/tools.js";
+import { startHealthServer } from "./health/http-server.js";
 
 // Create server instance
 const server = new Server(
@@ -33,6 +34,20 @@ async function main() {
     // Register handlers
     registerResourceHandlers(server);
     registerToolHandlers(server);
+    
+    // Start health check server (for Docker)
+    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+    const healthServer = startHealthServer(port);
+    
+    // Handle graceful shutdown
+    const shutdown = () => {
+      console.log("Shutting down servers...");
+      healthServer.close();
+      process.exit(0);
+    };
+    
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
 
     // Connect to transport
     const transport = new StdioServerTransport();

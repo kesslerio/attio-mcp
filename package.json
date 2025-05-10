@@ -16,7 +16,18 @@
     "check": "tsc --noEmit",
     "build:watch": "tsc --watch",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:people": "node test/people-test.js",
+    "test:search": "node test/search-test.js",
+    "test:lists": "node test/lists-test.js",
+    "setup-hooks": "chmod +x build/install-hooks.sh && ./build/install-hooks.sh",
+    "postinstall": "npm run setup-hooks",
+    "test-hooks": "chmod +x build/test-hooks.sh && ./build/test-hooks.sh",
+    "docker:build": "chmod +x scripts/docker-build.sh && ./scripts/docker-build.sh",
+    "docker:run": "docker run -p 3000:3000 -e ATTIO_API_KEY=${ATTIO_API_KEY} -e ATTIO_WORKSPACE_ID=${ATTIO_WORKSPACE_ID} attio-mcp-server:latest",
+    "docker:compose": "docker-compose up -d",
+    "docker:logs": "docker-compose logs -f",
+    "docker:stop": "docker-compose down"
   },
   "files": [
     "dist"
