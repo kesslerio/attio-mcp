@@ -4,10 +4,24 @@ This is an MCP server for [Attio](https://attio.com/), the AI-native CRM. It all
 
 #### Current Capabilities
 
-- [x] reading company records
-- [x] reading company notes
-- [x] writing company notes
-- [ ] other activities
+- [x] Company API
+  - [x] searching companies
+  - [x] reading company details
+  - [x] reading company notes
+  - [x] creating company notes
+- [x] People API
+  - [x] searching people
+  - [x] reading person details
+  - [x] reading person notes
+  - [x] creating person notes
+- [x] Lists API
+  - [x] getting all lists
+  - [x] getting list details
+  - [x] getting list entries
+  - [x] adding records to lists
+  - [x] removing records from lists
+- [ ] Tasks API
+- [ ] Records API
 
 ## Usage
 

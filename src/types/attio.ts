@@ -62,11 +62,46 @@ export interface AttioNote {
 }
 
 /**
+ * List record type
+ */
+export interface AttioList {
+  id: {
+    list_id: string;
+    [key: string]: any;
+  };
+  title: string;
+  description?: string;
+  object_slug: string;
+  workspace_id: string;
+  created_at: string;
+  updated_at: string;
+  entry_count?: number;
+  [key: string]: any; // Additional fields
+}
+
+/**
+ * List entry record type
+ */
+export interface AttioListEntry {
+  id: {
+    entry_id: string;
+    [key: string]: any;
+  };
+  list_id: string;
+  record_id: string;
+  created_at: string;
+  updated_at?: string;
+  record?: AttioRecord; // Optional included record data
+  [key: string]: any; // Additional fields
+}
+
+/**
  * Resource type enum for better type safety
  */
 export enum ResourceType {
   PEOPLE = 'people',
-  COMPANIES = 'companies'
+  COMPANIES = 'companies',
+  LISTS = 'lists'
 }
 
 /**
