@@ -1,0 +1,83 @@
+/**
+ * Common type definitions for Attio API responses and entities
+ */
+
+/**
+ * Resource type enum for better type safety
+ */
+export enum ResourceType {
+  PEOPLE = 'people',
+  COMPANIES = 'companies'
+}
+
+/**
+ * Base interface for Attio record values
+ */
+export interface AttioValue<T> {
+  value: T;
+  [key: string]: any; // Additional fields that might be present
+}
+
+/**
+ * Base interface for Attio records (common between people and companies)
+ */
+export interface AttioRecord {
+  id: { 
+    record_id: string;
+    [key: string]: any;
+  };
+  values: {
+    name?: Array<AttioValue<string>>;
+    email?: Array<AttioValue<string>>;
+    phone?: Array<AttioValue<string>>;
+    industry?: Array<AttioValue<string>>;
+    website?: Array<AttioValue<string>>;
+    [key: string]: any; // Other fields
+  };
+  [key: string]: any; // Additional top-level fields
+}
+
+/**
+ * Person record type
+ */
+export interface Person extends AttioRecord {
+  // Person-specific fields could be defined here
+}
+
+/**
+ * Company record type
+ */
+export interface Company extends AttioRecord {
+  // Company-specific fields could be defined here
+}
+
+/**
+ * Note record type
+ */
+export interface AttioNote {
+  id: { 
+    note_id: string;
+    [key: string]: any;
+  };
+  title: string;
+  content: string;
+  format: string;
+  parent_object: string;
+  parent_record_id: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: any; // Additional fields
+}
+
+/**
+ * API error response shape
+ */
+export interface AttioErrorResponse {
+  status?: number;
+  data?: any;
+  headers?: Record<string, string>;
+  error?: string;
+  message?: string;
+  details?: any;
+  [key: string]: any;
+}
