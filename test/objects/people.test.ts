@@ -30,16 +30,37 @@ describe('people', () => {
   };
 
   const mockNotes = [
-    { id: { note_id: 'note1' }, title: 'First meeting', content: 'Met with John' },
-    { id: { note_id: 'note2' }, title: 'Follow-up', content: 'Discussed next steps' }
+    { 
+      id: { note_id: 'note1' }, 
+      title: 'First meeting', 
+      content: 'Met with John',
+      format: 'plaintext',
+      parent_object: 'people',
+      parent_record_id: 'person1',
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z'
+    },
+    { 
+      id: { note_id: 'note2' }, 
+      title: 'Follow-up', 
+      content: 'Discussed next steps',
+      format: 'plaintext',
+      parent_object: 'people',
+      parent_record_id: 'person1',
+      created_at: '2025-01-02T00:00:00Z',
+      updated_at: '2025-01-02T00:00:00Z'
+    }
   ];
 
   const mockCreatedNote = {
     id: { note_id: 'note3' },
     title: '[AI] Meeting summary',
     content: 'Discussed project details',
+    format: 'plaintext',
     parent_object: 'people',
-    parent_record_id: 'person1'
+    parent_record_id: 'person1',
+    created_at: '2025-01-03T00:00:00Z',
+    updated_at: '2025-01-03T00:00:00Z'
   };
 
   let mockAxiosInstance: any;

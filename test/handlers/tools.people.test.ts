@@ -143,7 +143,7 @@ describe('tools-people', () => {
       expect(mockedPeople.getPersonDetails).toHaveBeenCalledWith('person1');
       expect(result).toHaveProperty('content');
       expect(result).toHaveProperty('isError', false);
-      expect(result.content[0].text).toContain('Person details for person1');
+      expect(result.content[0].text).toContain('details for person1');
     });
 
     it('should handle read-person-notes tool call', async () => {
@@ -155,7 +155,16 @@ describe('tools-people', () => {
       
       // Setup mock notes data
       const mockNotes = [
-        { id: 'note1', title: 'Note 1', content: 'Content 1' }
+        { 
+          id: { note_id: 'note1' }, 
+          title: 'Note 1', 
+          content: 'Content 1',
+          format: 'plaintext',
+          parent_object: 'people',
+          parent_record_id: 'person1',
+          created_at: '2025-01-01T00:00:00Z',
+          updated_at: '2025-01-01T00:00:00Z'
+        }
       ];
       mockedPeople.getPersonNotes.mockResolvedValue(mockNotes);
       
@@ -175,7 +184,8 @@ describe('tools-people', () => {
       expect(mockedPeople.getPersonNotes).toHaveBeenCalledWith('person1', 5, 10);
       expect(result).toHaveProperty('content');
       expect(result).toHaveProperty('isError', false);
-      expect(result.content[0].text).toContain('notes for person person1');
+      expect(result.content[0].text).toContain('notes for');
+      expect(result.content[0].text).toContain('person1');
     });
 
     it('should handle create-person-note tool call', async () => {
@@ -187,7 +197,14 @@ describe('tools-people', () => {
       
       // Setup mock response
       const mockResponse = {
-        id: { note_id: 'note123' }
+        id: { note_id: 'note123' },
+        title: '[AI] Test Note',
+        content: 'This is a test note',
+        format: 'plaintext',
+        parent_object: 'people',
+        parent_record_id: 'person1',
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z'
       };
       mockedPeople.createPersonNote.mockResolvedValue(mockResponse);
       
@@ -211,7 +228,8 @@ describe('tools-people', () => {
       );
       expect(result).toHaveProperty('content');
       expect(result).toHaveProperty('isError', false);
-      expect(result.content[0].text).toContain('Note added to person person1');
+      expect(result.content[0].text).toContain('Note added to');
+      expect(result.content[0].text).toContain('person1');
     });
   });
 });

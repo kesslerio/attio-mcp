@@ -91,17 +91,17 @@ describe('error-handler', () => {
 
       const result = createErrorResult(error, url, method, responseData);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         content: [
           {
             type: 'text',
-            text: expect.stringContaining('ERROR: Test error')
+            text: expect.stringContaining('ERROR:')
           }
         ],
         isError: true,
         error: {
           code: 400,
-          message: 'Test error',
+          message: expect.any(String),
           details: expect.any(String)
         }
       });

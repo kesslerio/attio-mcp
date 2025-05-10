@@ -183,7 +183,7 @@ describe('companies', () => {
 
       // Assert
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        'notes',
+        '/notes',
         {
           data: {
             format: 'plaintext',

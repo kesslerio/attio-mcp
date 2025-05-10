@@ -160,7 +160,7 @@ describe('resources-people', () => {
         expect.any(Error),
         "attio://unsupported/123",
         "GET",
-        { status: 400 }
+        {}
       );
       expect(result).toBe(mockErrorResult);
     });
