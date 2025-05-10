@@ -128,5 +128,12 @@ out
 .yarn/install-state.gz
 .pnp.*
 
+# Claude specific
+**/.claude/settings.local.json
+CLAUDE.md
+
+# OS files
 .DS_Store
+
+# Build output
 dist/

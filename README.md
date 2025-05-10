@@ -1,13 +1,15 @@
 # attio-mcp-server
 
-This is an MCP server for [Attio](https://attio.com/), the AI-native CRM. It allows mcp clients (like Claude) to connect to the Attio API.
+This is an MCP server for [Attio](https://attio.com/), the AI-native CRM. It allows MCP clients (like Claude) to connect to the Attio API.
 
 #### Current Capabilities
 
-- [x] reading company records
-- [x] reading company notes
-- [x] writing company notes
-- [ ] other activities
+- [x] Searching for companies and people
+- [x] Reading company and person details
+- [x] Reading company and person notes
+- [x] Creating company and person notes
+- [ ] Lists management
+- [ ] Tasks management
 
 ## Usage
 
@@ -26,6 +28,27 @@ This is expected to be a *bearer token* which means you can get one through the 
     "attio": {
       "command": "npx",
       "args": ["attio-mcp-server"],
+      "env": {
+        "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY"
+      }
+    }
+  }
+}
+```
+
+For local development, you can use npm link:
+
+```sh
+# In the attio-mcp-server directory
+npm run build && npm link
+
+# In your Claude Desktop configuration
+# Change the command to use the linked version
+{
+  "mcpServers": {
+    "attio": {
+      "command": "node",
+      "args": ["PATH_TO_YOUR_REPO/dist/index.js"],
       "env": {
         "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY"
       }
@@ -85,7 +108,27 @@ To set up the development environment, follow these steps:
 1. Start the model context protocol development server:
 
    ```sh
-   dotenv npx @modelcontextprotocol/inspector node PATH_TO_YOUR_CLONED_REPO/dist/index.js
+   dotenv npx @modelcontextprotocol/inspector node ./dist/index.js
    ```
 
-1. If the development server did not load the environment variable correctly, set the `ATTIO_API_KEY` on the left-hand side of the mcp inspector.
+1. If the development server did not load the environment variable correctly, set the `ATTIO_API_KEY` on the left-hand side of the MCP inspector.
+
+## Testing
+
+To run the test suite:
+
+```sh
+npm test
+```
+
+To run only people-related tests:
+
+```sh
+npm test -- -t "people"
+```
+
+To run only company-related tests:
+
+```sh
+npm test -- -t "companies"
+```
