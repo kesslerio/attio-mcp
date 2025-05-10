@@ -19,6 +19,25 @@ Add the following configuration to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "attio": {
+      "command": "node",
+      "args": ["/path/to/your/attio-mcp-server/dist/index.js"],
+      "env": {
+        "ATTIO_API_KEY": "your_attio_api_key_here",
+        "PORT": "9876"
+      }
+    }
+  }
+}
+```
+
+Make sure to replace `/path/to/your/attio-mcp-server` with the actual path to your attio-mcp-server project.
+
+Alternatively, if you want to use the npm package version:
+
+```json
+{
+  "mcpServers": {
+    "attio": {
       "command": "npx",
       "args": ["attio-mcp-server"],
       "env": {

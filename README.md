@@ -184,6 +184,25 @@ To use the dockerized Attio MCP Server with Claude:
 {
   "mcpServers": {
     "attio": {
+      "command": "node",
+      "args": ["/Users/kesslerio/GDrive/Projects/attio-mcp-server/dist/index.js"],
+      "env": {
+        "ATTIO_API_KEY": "YOUR_ATTIO_API_KEY",
+        "PORT": "9876"
+      }
+    }
+  }
+}
+```
+
+Make sure to replace the path with the actual path to your attio-mcp-server project on your machine.
+
+Or you can use the global npm package if you prefer the standard version:
+
+```json
+{
+  "mcpServers": {
+    "attio": {
       "command": "npx",
       "args": ["attio-mcp-server"],
       "env": {
