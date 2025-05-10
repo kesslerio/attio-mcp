@@ -8,13 +8,12 @@ services:
     container_name: attio-mcp-server
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "9876:3000"  # Using uncommon port 9876 externally
     environment:
       - NODE_ENV=production
       - PORT=3000
       # Add your Attio API credentials here or through a .env file
       - ATTIO_API_KEY=${ATTIO_API_KEY}
-      - ATTIO_WORKSPACE_ID=${ATTIO_WORKSPACE_ID}
     volumes:
       # Add volume mounts if needed for persistent data
       - ./config:/app/config
