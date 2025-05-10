@@ -2,16 +2,11 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListResourcesRequestSchema,
-  ListToolsRequestSchema,
-  ReadResourceRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { initializeAttioClient } from "./api/attio-client.js";
+import { registerResourceHandlers } from "./handlers/resources.js";
+import { registerToolHandlers } from "./handlers/tools.js";
 
-import { handleListResources, handleReadResource } from "./handlers/resources.js";
-import { handleListTools, handleCallTool } from "./handlers/tools.js";
-
+// Create server instance
 const server = new Server(
   {
     name: "attio-mcp-server",
@@ -25,12 +20,6 @@ const server = new Server(
   },
 );
 
-// Set up request handlers using imported functions
-server.setRequestHandler(ListResourcesRequestSchema, handleListResources);
-server.setRequestHandler(ReadResourceRequestSchema, handleReadResource);
-server.setRequestHandler(ListToolsRequestSchema, handleListTools);
-server.setRequestHandler(CallToolRequestSchema, handleCallTool);
-
 // Main function
 async function main() {
   try {
@@ -38,6 +27,14 @@ async function main() {
       throw new Error("ATTIO_API_KEY environment variable not found");
     }
 
+    // Initialize API client
+    initializeAttioClient(process.env.ATTIO_API_KEY);
+
+    // Register handlers
+    registerResourceHandlers(server);
+    registerToolHandlers(server);
+
+    // Connect to transport
     const transport = new StdioServerTransport();
     await server.connect(transport);
   } catch (error) {

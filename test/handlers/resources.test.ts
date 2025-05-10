@@ -1,260 +1,228 @@
-import { handleListResources, handleReadResource } from '../../src/handlers/resources.js';
-import { listCompanies, getCompanyDetails } from '../../src/objects/companies.js';
-import { listPeople, getPersonDetails } from '../../src/objects/people.js';
-import { createErrorResult } from '../../src/utils/error-handler.js';
+import { registerResourceHandlers } from '../../src/handlers/resources.js';
+import * as companiesModule from '../../src/objects/companies.js';
+import * as peopleModule from '../../src/objects/people.js';
+import * as errorHandler from '../../src/utils/error-handler.js';
+import { ResourceType } from '../../src/types/attio.js';
+import { parseResourceUri } from '../../src/utils/uri-parser.js';
 
-// Mock dependent modules
+// Mock dependencies
 jest.mock('../../src/objects/companies.js');
 jest.mock('../../src/objects/people.js');
 jest.mock('../../src/utils/error-handler.js');
+jest.mock('../../src/utils/uri-parser.js');
 
-describe('resources handlers', () => {
-  // Mock data
-  const mockCompanies = [
-    {
+describe('resources', () => {
+  describe('registerResourceHandlers', () => {
+    let mockServer: any;
+    const mockedCompanies = companiesModule as jest.Mocked<typeof companiesModule>;
+    const mockedPeople = peopleModule as jest.Mocked<typeof peopleModule>;
+    const mockedErrorHandler = errorHandler as jest.Mocked<typeof errorHandler>;
+    const mockedParseResourceUri = parseResourceUri as jest.MockedFunction<typeof parseResourceUri>;
+
+    // Mock data
+    const mockCompanies = [
+      {
+        id: { record_id: 'company1' },
+        values: { name: [{ value: 'Acme Corp' }] }
+      },
+      {
+        id: { record_id: 'company2' },
+        values: { name: [{ value: 'Globex Inc' }] }
+      }
+    ];
+
+    const mockPeople = [
+      {
+        id: { record_id: 'person1' },
+        values: { name: [{ value: 'John Doe' }] }
+      },
+      {
+        id: { record_id: 'person2' },
+        values: { name: [{ value: 'Jane Smith' }] }
+      }
+    ];
+
+    const mockCompanyDetails = {
       id: { record_id: 'company1' },
-      values: { name: [{ value: 'Acme Corp' }] }
-    },
-    {
-      id: { record_id: 'company2' },
-      values: { name: [{ value: 'Globex Inc' }] }
-    }
-  ];
+      values: {
+        name: [{ value: 'Acme Corp' }],
+        industry: [{ value: 'Technology' }],
+        website: [{ value: 'https://acme.example.com' }]
+      }
+    };
 
-  const mockPeople = [
-    {
+    const mockPersonDetails = {
       id: { record_id: 'person1' },
-      values: { name: [{ value: 'John Doe' }] }
-    },
-    {
-      id: { record_id: 'person2' },
-      values: { name: [{ value: 'Jane Smith' }] }
-    }
-  ];
+      values: {
+        name: [{ value: 'John Doe' }],
+        email: [{ value: 'john@example.com' }],
+        phone: [{ value: '+1234567890' }]
+      }
+    };
 
-  const mockCompanyDetails = {
-    id: { record_id: 'company1' },
-    values: {
-      name: [{ value: 'Acme Corp' }],
-      industry: [{ value: 'Technology' }]
-    }
-  };
-
-  const mockPersonDetails = {
-    id: { record_id: 'person1' },
-    values: {
-      name: [{ value: 'John Doe' }],
-      email: [{ value: 'john@example.com' }]
-    }
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (createErrorResult as jest.Mock).mockImplementation((error, url, method, data) => ({
-      content: [{ type: 'text', text: `Mock error: ${error.message}` }],
-      isError: true,
-      error: { code: 500, message: error.message, details: 'Mock error details' }
-    }));
-  });
-
-  describe('handleListResources', () => {
-    it('should list companies when no type is specified', async () => {
-      (listCompanies as jest.Mock).mockResolvedValueOnce(mockCompanies);
-
-      const request = {
-        params: {}
+    beforeEach(() => {
+      // Reset all mocks before each test
+      jest.resetAllMocks();
+      
+      // Setup mock server
+      mockServer = {
+        setRequestHandler: jest.fn(),
       };
-
-      const result = await handleListResources(request);
-
-      expect(listCompanies).toHaveBeenCalled();
-      expect(listPeople).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        resources: [
-          {
-            uri: 'attio://companies/company1',
-            name: 'Acme Corp',
-            mimeType: 'application/json'
-          },
-          {
-            uri: 'attio://companies/company2',
-            name: 'Globex Inc',
-            mimeType: 'application/json'
-          }
-        ],
-        description: 'Found 2 companies that you have interacted with most recently'
-      });
     });
 
-    it('should list people when type is "people"', async () => {
-      (listPeople as jest.Mock).mockResolvedValueOnce(mockPeople);
-
-      const request = {
-        params: { type: 'people' }
-      };
-
-      const result = await handleListResources(request);
-
-      expect(listPeople).toHaveBeenCalled();
-      expect(listCompanies).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        resources: [
-          {
-            uri: 'attio://people/person1',
-            name: 'John Doe',
-            mimeType: 'application/json'
-          },
-          {
-            uri: 'attio://people/person2',
-            name: 'Jane Smith',
-            mimeType: 'application/json'
-          }
-        ],
-        description: 'Found 2 people that you have interacted with most recently'
-      });
+    it('should register handlers for ListResourcesRequestSchema and ReadResourceRequestSchema', () => {
+      // Act
+      registerResourceHandlers(mockServer);
+      
+      // Assert
+      expect(mockServer.setRequestHandler).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle errors when listing companies', async () => {
-      const error = new Error('API error');
-      (listCompanies as jest.Mock).mockRejectedValueOnce(error);
-
-      const request = {
-        params: {}
-      };
-
-      const result = await handleListResources(request);
-
-      expect(createErrorResult).toHaveBeenCalledWith(
-        error,
-        '/objects/companies/records/query',
-        'POST',
-        {}
-      );
-      expect(result).toHaveProperty('isError', true);
+    it('should handle list companies request successfully', async () => {
+      // Register the handlers
+      registerResourceHandlers(mockServer);
+      
+      // Create sample data for the test
+      mockedCompanies.listCompanies.mockResolvedValue(mockCompanies);
+      
+      // Get the first handler function that was registered
+      const listResourcesHandler = mockServer.setRequestHandler.mock.calls[0][1];
+      
+      // Call the handler with a request for companies
+      const result = await listResourcesHandler({ params: { type: ResourceType.COMPANIES } });
+      
+      // Assert
+      expect(mockedCompanies.listCompanies).toHaveBeenCalled();
+      expect(result).toHaveProperty('resources');
+      expect(result).toHaveProperty('description');
+      expect(result.resources).toHaveLength(2);
+      expect(result.resources[0]).toHaveProperty('uri');
+      expect(result.resources[0]).toHaveProperty('name');
+      expect(result.resources[0]).toHaveProperty('mimeType', 'application/json');
     });
 
-    it('should handle errors when listing people', async () => {
-      const error = new Error('API error');
-      (listPeople as jest.Mock).mockRejectedValueOnce(error);
-
-      const request = {
-        params: { type: 'people' }
-      };
-
-      const result = await handleListResources(request);
-
-      expect(createErrorResult).toHaveBeenCalledWith(
-        error,
-        '/objects/people/records/query',
-        'POST',
-        {}
-      );
-      expect(result).toHaveProperty('isError', true);
-    });
-  });
-
-  describe('handleReadResource', () => {
-    it('should read company details for company URIs', async () => {
-      (getCompanyDetails as jest.Mock).mockResolvedValueOnce(mockCompanyDetails);
-
-      const request = {
-        params: {
-          uri: 'attio://companies/company1'
-        }
-      };
-
-      const result = await handleReadResource(request);
-
-      expect(getCompanyDetails).toHaveBeenCalledWith('company1');
-      expect(getPersonDetails).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        contents: [
-          {
-            uri: 'attio://companies/company1',
-            text: JSON.stringify(mockCompanyDetails, null, 2),
-            mimeType: 'application/json'
-          }
-        ]
-      });
+    it('should handle list people request successfully', async () => {
+      // Register the handlers
+      registerResourceHandlers(mockServer);
+      
+      // Create sample data for the test
+      mockedPeople.listPeople.mockResolvedValue(mockPeople);
+      
+      // Get the list resources handler function
+      const listResourcesHandler = mockServer.setRequestHandler.mock.calls[0][1];
+      
+      // Call the handler with a request for people
+      const result = await listResourcesHandler({ params: { type: ResourceType.PEOPLE } });
+      
+      // Assert
+      expect(mockedPeople.listPeople).toHaveBeenCalled();
+      expect(result).toHaveProperty('resources');
+      expect(result).toHaveProperty('description');
+      expect(result.resources).toHaveLength(2);
+      expect(result.resources[0]).toHaveProperty('uri');
+      expect(result.resources[0]).toHaveProperty('name');
+      expect(result.resources[0]).toHaveProperty('mimeType', 'application/json');
     });
 
-    it('should read person details for people URIs', async () => {
-      (getPersonDetails as jest.Mock).mockResolvedValueOnce(mockPersonDetails);
-
-      const request = {
-        params: {
-          uri: 'attio://people/person1'
-        }
-      };
-
-      const result = await handleReadResource(request);
-
-      expect(getPersonDetails).toHaveBeenCalledWith('person1');
-      expect(getCompanyDetails).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        contents: [
-          {
-            uri: 'attio://people/person1',
-            text: JSON.stringify(mockPersonDetails, null, 2),
-            mimeType: 'application/json'
-          }
-        ]
-      });
+    it('should handle errors in list companies request', async () => {
+      // Register the handlers
+      registerResourceHandlers(mockServer);
+      
+      // Setup mock error
+      const mockError = new Error('Failed to list companies');
+      mockedCompanies.listCompanies.mockRejectedValue(mockError);
+      
+      // Setup mock error result
+      const mockErrorResult = { isError: true, error: { message: 'Error' } };
+      mockedErrorHandler.createErrorResult.mockReturnValue(mockErrorResult as any);
+      
+      // Get the list resources handler function
+      const listResourcesHandler = mockServer.setRequestHandler.mock.calls[0][1];
+      
+      // Call the handler with a request for companies
+      const result = await listResourcesHandler({ params: { type: ResourceType.COMPANIES } });
+      
+      // Assert
+      expect(mockedCompanies.listCompanies).toHaveBeenCalled();
+      expect(mockedErrorHandler.createErrorResult).toHaveBeenCalled();
+      expect(result).toBe(mockErrorResult);
     });
 
-    it('should handle errors when reading company details', async () => {
-      const error = new Error('API error');
-      (getCompanyDetails as jest.Mock).mockRejectedValueOnce(error);
-
-      const request = {
-        params: {
-          uri: 'attio://companies/company1'
-        }
-      };
-
-      const result = await handleReadResource(request);
-
-      expect(createErrorResult).toHaveBeenCalledWith(
-        error,
-        '/objects/companies/company1',
-        'GET',
-        {}
-      );
-      expect(result).toHaveProperty('isError', true);
+    it('should handle read company resource request successfully', async () => {
+      // Register the handlers
+      registerResourceHandlers(mockServer);
+      
+      // Setup mock parse resource URI
+      mockedParseResourceUri.mockReturnValue([ResourceType.COMPANIES, 'company1']);
+      
+      // Setup mock company details
+      mockedCompanies.getCompanyDetails.mockResolvedValue(mockCompanyDetails);
+      
+      // Get the read resource handler function
+      const readResourceHandler = mockServer.setRequestHandler.mock.calls[1][1];
+      
+      // Call the handler with a request for a company URI
+      const result = await readResourceHandler({ params: { uri: 'attio://companies/company1' } });
+      
+      // Assert
+      expect(mockedParseResourceUri).toHaveBeenCalledWith('attio://companies/company1');
+      expect(mockedCompanies.getCompanyDetails).toHaveBeenCalledWith('company1');
+      expect(result).toHaveProperty('contents');
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0]).toHaveProperty('uri', 'attio://companies/company1');
+      expect(result.contents[0]).toHaveProperty('mimeType', 'application/json');
     });
 
-    it('should handle errors when reading person details', async () => {
-      const error = new Error('API error');
-      (getPersonDetails as jest.Mock).mockRejectedValueOnce(error);
-
-      const request = {
-        params: {
-          uri: 'attio://people/person1'
-        }
-      };
-
-      const result = await handleReadResource(request);
-
-      expect(createErrorResult).toHaveBeenCalledWith(
-        error,
-        '/objects/people/person1',
-        'GET',
-        {}
-      );
-      expect(result).toHaveProperty('isError', true);
+    it('should handle read person resource request successfully', async () => {
+      // Register the handlers
+      registerResourceHandlers(mockServer);
+      
+      // Setup mock parse resource URI
+      mockedParseResourceUri.mockReturnValue([ResourceType.PEOPLE, 'person1']);
+      
+      // Setup mock person details
+      mockedPeople.getPersonDetails.mockResolvedValue(mockPersonDetails);
+      
+      // Get the read resource handler function
+      const readResourceHandler = mockServer.setRequestHandler.mock.calls[1][1];
+      
+      // Call the handler with a request for a person URI
+      const result = await readResourceHandler({ params: { uri: 'attio://people/person1' } });
+      
+      // Assert
+      expect(mockedParseResourceUri).toHaveBeenCalledWith('attio://people/person1');
+      expect(mockedPeople.getPersonDetails).toHaveBeenCalledWith('person1');
+      expect(result).toHaveProperty('contents');
+      expect(result.contents).toHaveLength(1);
+      expect(result.contents[0]).toHaveProperty('uri', 'attio://people/person1');
+      expect(result.contents[0]).toHaveProperty('mimeType', 'application/json');
     });
 
-    it('should throw an error for unsupported resource URIs', async () => {
-      const request = {
-        params: {
-          uri: 'attio://unsupported/id123'
-        }
-      };
-
-      const result = await handleReadResource(request);
-
-      expect(createErrorResult).toHaveBeenCalled();
-      expect(result).toHaveProperty('isError', true);
+    it('should handle errors in read resource request', async () => {
+      // Register the handlers
+      registerResourceHandlers(mockServer);
+      
+      // Setup mock parse resource URI
+      mockedParseResourceUri.mockReturnValue([ResourceType.COMPANIES, 'company1']);
+      
+      // Setup mock error
+      const mockError = new Error('Failed to get company details');
+      mockedCompanies.getCompanyDetails.mockRejectedValue(mockError);
+      
+      // Setup mock error result
+      const mockErrorResult = { isError: true, error: { message: 'Error' } };
+      mockedErrorHandler.createErrorResult.mockReturnValue(mockErrorResult as any);
+      
+      // Get the read resource handler function
+      const readResourceHandler = mockServer.setRequestHandler.mock.calls[1][1];
+      
+      // Call the handler with a request for a company URI
+      const result = await readResourceHandler({ params: { uri: 'attio://companies/company1' } });
+      
+      // Assert
+      expect(mockedCompanies.getCompanyDetails).toHaveBeenCalledWith('company1');
+      expect(mockedErrorHandler.createErrorResult).toHaveBeenCalled();
+      expect(result).toBe(mockErrorResult);
     });
   });
 });

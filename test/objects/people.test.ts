@@ -1,14 +1,11 @@
-import { 
-  searchPeople, 
-  listPeople, 
-  getPersonDetails, 
-  getPersonNotes, 
-  createPersonNote 
-} from '../../src/objects/people.js';
-import { getAttioClient } from '../../src/api/attio-client.js';
+import { searchPeople, listPeople, getPersonDetails, getPersonNotes, createPersonNote } from '../../src/objects/people.js';
+import * as attioClient from '../../src/api/attio-client.js';
+import * as attioOperations from '../../src/api/attio-operations.js';
+import { ResourceType } from '../../src/types/attio.js';
 
-// Mock the attio-client module
+// Mock dependencies
 jest.mock('../../src/api/attio-client.js');
+jest.mock('../../src/api/attio-operations.js');
 
 describe('people', () => {
   // Mock data
@@ -33,194 +30,272 @@ describe('people', () => {
   };
 
   const mockNotes = [
-    { id: { note_id: 'note1' }, title: 'First meeting', content: 'Met with John' },
-    { id: { note_id: 'note2' }, title: 'Follow-up', content: 'Discussed next steps' }
+    { 
+      id: { note_id: 'note1' }, 
+      title: 'First meeting', 
+      content: 'Met with John',
+      format: 'plaintext',
+      parent_object: 'people',
+      parent_record_id: 'person1',
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z'
+    },
+    { 
+      id: { note_id: 'note2' }, 
+      title: 'Follow-up', 
+      content: 'Discussed next steps',
+      format: 'plaintext',
+      parent_object: 'people',
+      parent_record_id: 'person1',
+      created_at: '2025-01-02T00:00:00Z',
+      updated_at: '2025-01-02T00:00:00Z'
+    }
   ];
 
   const mockCreatedNote = {
     id: { note_id: 'note3' },
-    title: '[AI] Test Note',
-    content: 'This is a test note'
+    title: '[AI] Meeting summary',
+    content: 'Discussed project details',
+    format: 'plaintext',
+    parent_object: 'people',
+    parent_record_id: 'person1',
+    created_at: '2025-01-03T00:00:00Z',
+    updated_at: '2025-01-03T00:00:00Z'
   };
 
-  // Mock API client
-  const mockGet = jest.fn();
-  const mockPost = jest.fn();
-  const mockApi = { get: mockGet, post: mockPost };
+  let mockAxiosInstance: any;
+  const mockedAttioClient = attioClient as jest.Mocked<typeof attioClient>;
+  const mockedAttioOperations = attioOperations as jest.Mocked<typeof attioOperations>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (getAttioClient as jest.Mock).mockReturnValue(mockApi);
+    // Reset all mocks before each test
+    jest.resetAllMocks();
+    
+    // Setup mock API client
+    mockAxiosInstance = {
+      get: jest.fn(),
+      post: jest.fn(),
+    };
+    mockedAttioClient.getAttioClient.mockReturnValue(mockAxiosInstance);
   });
 
   describe('searchPeople', () => {
-    it('should search for people by name', async () => {
-      mockPost.mockResolvedValueOnce({
-        data: { data: mockPeopleData }
-      });
+    it('should search people by name using operations module if available', async () => {
+      // Arrange
+      const query = 'John';
+      mockedAttioOperations.searchObject.mockResolvedValueOnce(mockPeopleData);
 
-      const result = await searchPeople('John');
+      // Act
+      const result = await searchPeople(query);
 
-      expect(mockPost).toHaveBeenCalledWith('/objects/people/records/query', {
-        filter: {
-          name: { '$contains': 'John' }
-        }
-      });
-      
+      // Assert
+      expect(mockedAttioOperations.searchObject).toHaveBeenCalledWith(ResourceType.PEOPLE, query);
       expect(result).toEqual(mockPeopleData);
     });
 
-    it('should handle API errors', async () => {
-      const error = new Error('API error');
-      mockPost.mockRejectedValueOnce(error);
+    it('should search people by name using direct API if operations fail', async () => {
+      // Arrange
+      const query = 'John';
+      mockedAttioOperations.searchObject.mockRejectedValueOnce(new Error('Not available'));
+      
+      const mockResponse = {
+        data: {
+          data: mockPeopleData
+        }
+      };
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
 
-      await expect(searchPeople('John')).rejects.toThrow('API error');
+      // Act
+      const result = await searchPeople(query);
+
+      // Assert
+      expect(mockedAttioOperations.searchObject).toHaveBeenCalledWith(ResourceType.PEOPLE, query);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/objects/people/records/query',
+        expect.objectContaining({
+          filter: {
+            name: { "$contains": query }
+          }
+        })
+      );
+      expect(result).toEqual(mockPeopleData);
     });
 
-    it('should return empty array when no data is returned', async () => {
-      mockPost.mockResolvedValueOnce({
-        data: {}
-      });
+    it('should throw error when both approaches fail', async () => {
+      // Arrange
+      const query = 'John';
+      mockedAttioOperations.searchObject.mockRejectedValueOnce(new Error('Not available'));
+      mockAxiosInstance.post.mockRejectedValueOnce(new Error('API Error'));
 
-      const result = await searchPeople('NonExistentPerson');
-
-      expect(result).toEqual([]);
+      // Act & Assert
+      await expect(searchPeople(query)).rejects.toThrow('API Error');
     });
   });
 
   describe('listPeople', () => {
-    it('should list people with default parameters', async () => {
-      mockPost.mockResolvedValueOnce({
-        data: { data: mockPeopleData }
-      });
+    it('should list people using operations module if available', async () => {
+      // Arrange
+      const limit = 10;
+      mockedAttioOperations.listObjects.mockResolvedValueOnce(mockPeopleData);
 
-      const result = await listPeople();
+      // Act
+      const result = await listPeople(limit);
 
-      expect(mockPost).toHaveBeenCalledWith('/objects/people/records/query', {
-        limit: 20,
-        sorts: [{ attribute: 'last_interaction', field: 'interacted_at', direction: 'desc' }]
-      });
-      
+      // Assert
+      expect(mockedAttioOperations.listObjects).toHaveBeenCalledWith(ResourceType.PEOPLE, limit);
       expect(result).toEqual(mockPeopleData);
     });
 
-    it('should list people with custom limit', async () => {
-      mockPost.mockResolvedValueOnce({
-        data: { data: mockPeopleData }
-      });
-
-      const result = await listPeople(5);
-
-      expect(mockPost).toHaveBeenCalledWith('/objects/people/records/query', {
-        limit: 5,
-        sorts: [{ attribute: 'last_interaction', field: 'interacted_at', direction: 'desc' }]
-      });
+    it('should list people using direct API if operations fail', async () => {
+      // Arrange
+      const limit = 10;
+      mockedAttioOperations.listObjects.mockRejectedValueOnce(new Error('Not available'));
       
+      const mockResponse = {
+        data: {
+          data: mockPeopleData
+        }
+      };
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
+
+      // Act
+      const result = await listPeople(limit);
+
+      // Assert
+      expect(mockedAttioOperations.listObjects).toHaveBeenCalledWith(ResourceType.PEOPLE, limit);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/objects/people/records/query',
+        expect.objectContaining({
+          limit,
+          sorts: [{ attribute: 'last_interaction', field: 'interacted_at', direction: 'desc' }]
+        })
+      );
       expect(result).toEqual(mockPeopleData);
-    });
-
-    it('should handle API errors', async () => {
-      const error = new Error('API error');
-      mockPost.mockRejectedValueOnce(error);
-
-      await expect(listPeople()).rejects.toThrow('API error');
     });
   });
 
   describe('getPersonDetails', () => {
-    it('should get person details by ID', async () => {
-      mockGet.mockResolvedValueOnce({
-        data: mockPersonDetails
-      });
+    it('should get person details using operations module if available', async () => {
+      // Arrange
+      const personId = 'person1';
+      mockedAttioOperations.getObjectDetails.mockResolvedValueOnce(mockPersonDetails);
 
-      const result = await getPersonDetails('person1');
+      // Act
+      const result = await getPersonDetails(personId);
 
-      expect(mockGet).toHaveBeenCalledWith('/objects/people/records/person1');
+      // Assert
+      expect(mockedAttioOperations.getObjectDetails).toHaveBeenCalledWith(ResourceType.PEOPLE, personId);
       expect(result).toEqual(mockPersonDetails);
     });
 
-    it('should handle API errors', async () => {
-      const error = new Error('API error');
-      mockGet.mockRejectedValueOnce(error);
+    it('should get person details using direct API if operations fail', async () => {
+      // Arrange
+      const personId = 'person1';
+      mockedAttioOperations.getObjectDetails.mockRejectedValueOnce(new Error('Not available'));
+      
+      const mockResponse = {
+        data: mockPersonDetails
+      };
+      mockAxiosInstance.get.mockResolvedValueOnce(mockResponse);
 
-      await expect(getPersonDetails('person1')).rejects.toThrow('API error');
+      // Act
+      const result = await getPersonDetails(personId);
+
+      // Assert
+      expect(mockedAttioOperations.getObjectDetails).toHaveBeenCalledWith(ResourceType.PEOPLE, personId);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/objects/people/records/${personId}`);
+      expect(result).toEqual(mockPersonDetails);
     });
   });
 
   describe('getPersonNotes', () => {
-    it('should get notes for a person with default parameters', async () => {
-      mockGet.mockResolvedValueOnce({
-        data: { data: mockNotes }
-      });
+    it('should get notes for a person using operations module if available', async () => {
+      // Arrange
+      const personId = 'person1';
+      const limit = 10;
+      const offset = 0;
+      mockedAttioOperations.getObjectNotes.mockResolvedValueOnce(mockNotes);
 
-      const result = await getPersonNotes('person1');
+      // Act
+      const result = await getPersonNotes(personId, limit, offset);
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/notes?limit=10&offset=0&parent_object=people&parent_record_id=person1'
-      );
-      
+      // Assert
+      expect(mockedAttioOperations.getObjectNotes).toHaveBeenCalledWith(ResourceType.PEOPLE, personId, limit, offset);
       expect(result).toEqual(mockNotes);
     });
 
-    it('should get notes with custom limit and offset', async () => {
-      mockGet.mockResolvedValueOnce({
-        data: { data: mockNotes }
-      });
-
-      const result = await getPersonNotes('person1', 5, 10);
-
-      expect(mockGet).toHaveBeenCalledWith(
-        '/notes?limit=5&offset=10&parent_object=people&parent_record_id=person1'
-      );
+    it('should get notes for a person using direct API if operations fail', async () => {
+      // Arrange
+      const personId = 'person1';
+      const limit = 10;
+      const offset = 0;
+      mockedAttioOperations.getObjectNotes.mockRejectedValueOnce(new Error('Not available'));
       
+      const mockResponse = {
+        data: {
+          data: mockNotes
+        }
+      };
+      mockAxiosInstance.get.mockResolvedValueOnce(mockResponse);
+
+      // Act
+      const result = await getPersonNotes(personId, limit, offset);
+
+      // Assert
+      expect(mockedAttioOperations.getObjectNotes).toHaveBeenCalledWith(ResourceType.PEOPLE, personId, limit, offset);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        `/notes?limit=${limit}&offset=${offset}&parent_object=people&parent_record_id=${personId}`
+      );
       expect(result).toEqual(mockNotes);
-    });
-
-    it('should handle API errors', async () => {
-      const error = new Error('API error');
-      mockGet.mockRejectedValueOnce(error);
-
-      await expect(getPersonNotes('person1')).rejects.toThrow('API error');
-    });
-
-    it('should return empty array when no data is returned', async () => {
-      mockGet.mockResolvedValueOnce({
-        data: {}
-      });
-
-      const result = await getPersonNotes('person1');
-
-      expect(result).toEqual([]);
     });
   });
 
   describe('createPersonNote', () => {
-    it('should create a note for a person', async () => {
-      mockPost.mockResolvedValueOnce({
-        data: mockCreatedNote
-      });
+    it('should create a note for a person using operations module if available', async () => {
+      // Arrange
+      const personId = 'person1';
+      const title = 'Meeting summary';
+      const content = 'Discussed project details';
+      mockedAttioOperations.createObjectNote.mockResolvedValueOnce(mockCreatedNote);
 
-      const result = await createPersonNote('person1', 'Test Note', 'This is a test note');
+      // Act
+      const result = await createPersonNote(personId, title, content);
 
-      expect(mockPost).toHaveBeenCalledWith('/notes', {
-        data: {
-          format: 'plaintext',
-          parent_object: 'people',
-          parent_record_id: 'person1',
-          title: '[AI] Test Note',
-          content: 'This is a test note'
-        }
-      });
-      
+      // Assert
+      expect(mockedAttioOperations.createObjectNote).toHaveBeenCalledWith(ResourceType.PEOPLE, personId, title, content);
       expect(result).toEqual(mockCreatedNote);
     });
 
-    it('should handle API errors', async () => {
-      const error = new Error('API error');
-      mockPost.mockRejectedValueOnce(error);
+    it('should create a note for a person using direct API if operations fail', async () => {
+      // Arrange
+      const personId = 'person1';
+      const title = 'Meeting summary';
+      const content = 'Discussed project details';
+      mockedAttioOperations.createObjectNote.mockRejectedValueOnce(new Error('Not available'));
+      
+      const mockResponse = {
+        data: mockCreatedNote
+      };
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
 
-      await expect(createPersonNote('person1', 'Test Note', 'This is a test note'))
-        .rejects.toThrow('API error');
+      // Act
+      const result = await createPersonNote(personId, title, content);
+
+      // Assert
+      expect(mockedAttioOperations.createObjectNote).toHaveBeenCalledWith(ResourceType.PEOPLE, personId, title, content);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        'notes',
+        {
+          data: {
+            format: "plaintext",
+            parent_object: "people",
+            parent_record_id: personId,
+            title: `[AI] ${title}`,
+            content
+          }
+        }
+      );
+      expect(result).toEqual(mockCreatedNote);
     });
   });
 });

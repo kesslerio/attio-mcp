@@ -73,9 +73,11 @@ export enum ResourceType {
  * API error response shape
  */
 export interface AttioErrorResponse {
+  status?: number;
+  data?: any;
+  headers?: Record<string, string>;
   error?: string;
   message?: string;
-  status?: number;
   details?: any;
   [key: string]: any;
 }

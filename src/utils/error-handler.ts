@@ -1,3 +1,6 @@
+/**
+ * Error handling utility for creating consistent error responses
+ */
 import { AttioErrorResponse } from "../types/attio.js";
 
 /**
@@ -19,6 +22,33 @@ export class AttioApiError extends Error {
     this.method = method;
     this.responseData = responseData;
   }
+}
+
+/**
+ * Creates a specific API error based on status code and context
+ * 
+ * @param status - HTTP status code
+ * @param path - API path
+ * @param method - HTTP method
+ * @param responseData - Response data from API
+ * @returns Appropriate error instance
+ */
+export function createAttioError(error: any): Error {
+  // If it's already an AttioApiError, return it
+  if (error instanceof AttioApiError) {
+    return error;
+  }
+  
+  // Handle Axios errors
+  if (error.isAxiosError && error.response) {
+    const { status, data, config } = error.response;
+    const path = config?.url || 'unknown';
+    const method = config?.method?.toUpperCase() || 'UNKNOWN';
+    return createApiError(status, path, method, data);
+  }
+  
+  // Return the original error if we can't enhance it
+  return error;
 }
 
 /**
@@ -132,7 +162,7 @@ export function createApiError(status: number, path: string, method: string, res
 }
 
 /**
- * Creates a detailed error response for API errors
+ * Creates a detailed error response for API errors, suitable for returning to MCP clients
  * 
  * @param error - The caught error
  * @param url - The API URL that was called
@@ -183,7 +213,7 @@ export function createErrorResult(error: Error, url: string, method: string, res
 }
 
 /**
- * Format an AttioApiError into a standardized error response
+ * Format an AttioApiError into a standardized error response for MCP
  * 
  * @param error - The API error to format
  * @returns Formatted error response

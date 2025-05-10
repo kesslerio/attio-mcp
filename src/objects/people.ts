@@ -1,3 +1,7 @@
+/**
+ * People-related functionality
+ */
+import { getAttioClient } from "../api/attio-client.js";
 import { 
   searchObject, 
   listObjects, 
@@ -18,57 +22,114 @@ import {
  * @returns Array of person results
  */
 export async function searchPeople(query: string): Promise<Person[]> {
-  return searchObject<Person>(ResourceType.PEOPLE, query);
+  // Use the unified operation if available, with fallback to direct implementation
+  try {
+    return await searchObject<Person>(ResourceType.PEOPLE, query);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = "/objects/people/records/query";
+    
+    const response = await api.post(path, {
+      filter: {
+        name: { "$contains": query },
+      }
+    });
+    return response.data.data || [];
+  }
 }
 
 /**
- * Lists all people with optional limit and sorting
+ * Lists people sorted by most recent interaction
  * 
- * @param limit - Maximum number of results to return
- * @returns Array of people
+ * @param limit - Maximum number of people to return (default: 20)
+ * @returns Array of person results
  */
 export async function listPeople(limit: number = 20): Promise<Person[]> {
-  return listObjects<Person>(ResourceType.PEOPLE, limit);
+  // Use the unified operation if available, with fallback to direct implementation
+  try {
+    return await listObjects<Person>(ResourceType.PEOPLE, limit);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = "/objects/people/records/query";
+    
+    const response = await api.post(path, {
+      limit,
+      sorts: [{ attribute: 'last_interaction', field: 'interacted_at', direction: 'desc' }]
+    });
+    return response.data.data || [];
+  }
 }
 
 /**
- * Gets detailed information for a specific person
+ * Gets details for a specific person
  * 
- * @param personId - ID of the person
+ * @param personId - The ID of the person
  * @returns Person details
  */
 export async function getPersonDetails(personId: string): Promise<Person> {
-  return getObjectDetails<Person>(ResourceType.PEOPLE, personId);
+  // Use the unified operation if available, with fallback to direct implementation
+  try {
+    return await getObjectDetails<Person>(ResourceType.PEOPLE, personId);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = `/objects/people/records/${personId}`;
+    
+    const response = await api.get(path);
+    return response.data;
+  }
 }
 
 /**
  * Gets notes for a specific person
  * 
- * @param personId - ID of the person
- * @param limit - Maximum number of notes to return
- * @param offset - Number of notes to skip
- * @returns Array of person notes
+ * @param personId - The ID of the person
+ * @param limit - Maximum number of notes to fetch (default: 10)
+ * @param offset - Number of notes to skip (default: 0)
+ * @returns Array of notes
  */
-export async function getPersonNotes(
-  personId: string, 
-  limit: number = 10, 
-  offset: number = 0
-): Promise<AttioNote[]> {
-  return getObjectNotes(ResourceType.PEOPLE, personId, limit, offset);
+export async function getPersonNotes(personId: string, limit: number = 10, offset: number = 0): Promise<AttioNote[]> {
+  // Use the unified operation if available, with fallback to direct implementation
+  try {
+    return await getObjectNotes(ResourceType.PEOPLE, personId, limit, offset);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = `/notes?limit=${limit}&offset=${offset}&parent_object=people&parent_record_id=${personId}`;
+    
+    const response = await api.get(path);
+    return response.data.data || [];
+  }
 }
 
 /**
- * Creates a new note for a person
+ * Creates a note for a specific person
  * 
- * @param personId - ID of the person
- * @param noteTitle - Title of the note
- * @param noteText - Content of the note
- * @returns Created note response
+ * @param personId - The ID of the person
+ * @param title - The title of the note
+ * @param content - The content of the note
+ * @returns The created note
  */
-export async function createPersonNote(
-  personId: string, 
-  noteTitle: string, 
-  noteText: string
-): Promise<AttioNote> {
-  return createObjectNote(ResourceType.PEOPLE, personId, noteTitle, noteText);
+export async function createPersonNote(personId: string, title: string, content: string): Promise<AttioNote> {
+  // Use the unified operation if available, with fallback to direct implementation
+  try {
+    return await createObjectNote(ResourceType.PEOPLE, personId, title, content);
+  } catch (error) {
+    // Fallback implementation
+    const api = getAttioClient();
+    const path = 'notes';
+    
+    const response = await api.post(path, {
+      data: {
+        format: "plaintext",
+        parent_object: "people",
+        parent_record_id: personId,
+        title: `[AI] ${title}`,
+        content
+      },
+    });
+    return response.data;
+  }
 }

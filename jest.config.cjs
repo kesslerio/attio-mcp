@@ -1,3 +1,4 @@
+/** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -15,6 +16,7 @@ module.exports = {
   },
   testPathIgnorePatterns: [
     '<rootDir>/dist/',
-    '<rootDir>/node_modules/'
-  ]
+    '<rootDir>/node_modules/',
+    '<rootDir>/original-structure-backup/',
+  ],
 };
